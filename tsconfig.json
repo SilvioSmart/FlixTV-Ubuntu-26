@@ -1,0 +1,52 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/web"
+    },
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./packages/shared"
+    }
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2023"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@stream-9/shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@stream-9/shared/*": [
+        "packages/shared/src/*"
+      ],
+      "@web/*": [
+        "apps/web/src/*"
+      ],
+      "@api/*": [
+        "apps/api/src/*"
+      ]
+    }
+  }
+}

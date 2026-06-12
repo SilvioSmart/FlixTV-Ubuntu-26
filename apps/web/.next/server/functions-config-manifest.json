@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/channels": {},
+    "/api/epg": {},
+    "/api/watch-history": {}
+  }
+}
