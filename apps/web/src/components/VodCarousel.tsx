@@ -12,6 +12,7 @@ export type VodItem = {
 };
 
 type VodCarouselProps = {
+  id?: string;
   title: string;
   items: VodItem[];
   emptyMessage?: string;
@@ -19,13 +20,18 @@ type VodCarouselProps = {
 };
 
 export default function VodCarousel({
+  id,
   title,
   items,
   emptyMessage = "No titles available in this row.",
   className = ""
 }: VodCarouselProps) {
   return (
-    <section className={className} aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-heading`}>
+    <section
+      id={id}
+      className={className}
+      aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-heading`}
+    >
       <div className="mb-3 flex items-end justify-between gap-4 px-1">
         <h2 id={`${title.toLowerCase().replaceAll(" ", "-")}-heading`} className="text-xl font-black text-white sm:text-2xl">
           {title}

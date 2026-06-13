@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import ChannelSwitcher, {
+import { useEffect, useMemo, useState } from "react";
+import {
   NETWORK_OPTIONS,
   type NetworkId,
   type NetworkOption
 } from "@/components/ChannelSwitcher";
 import EpgGrid, { type EpgProgram } from "@/components/EpgGrid";
+import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
 import HomeMenu from "@/components/HomeMenu";
+import SiteHeader from "@/components/SiteHeader";
 import VideoPlayer from "@/components/VideoPlayer";
 import VodCarousel, { type VodItem } from "@/components/VodCarousel";
 import { buildBackendUrl, buildVastTagUrl } from "@/lib/platform-config";
@@ -50,6 +52,36 @@ const FALLBACK_CHANNELS: Record<NetworkId, LiveChannel> = {
 
 const DEFAULT_FALLBACK_CHANNEL = FALLBACK_CHANNELS.nove;
 const EMPTY_EPG: EpgProgram[] = [];
+
+const HERO_SLIDES: HeroSlide[] = [
+  {
+    id: "hero-web-live",
+    eyebrow: "In diretta",
+    title: "FlixTV Live",
+    description: "Guarda il flusso live del canale, passa alla guida TV e ritrova i contenuti piu seguiti in una home veloce e televisiva.",
+    imageUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1800&q=85",
+    ctaLabel: "Guarda ora",
+    href: "#web-live"
+  },
+  {
+    id: "hero-telegaribaldi",
+    eyebrow: "News",
+    title: "Telegaribaldi",
+    description: "Informazione, territorio e aggiornamenti quotidiani con un taglio diretto e riconoscibile.",
+    imageUrl: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1800&q=85",
+    ctaLabel: "Vedi le news",
+    href: "#telegaribaldi"
+  },
+  {
+    id: "hero-show",
+    eyebrow: "Intrattenimento",
+    title: "Show",
+    description: "Programmi, rubriche e format originali pensati per una visione semplice su mobile, tablet e TV.",
+    imageUrl: "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&w=1800&q=85",
+    ctaLabel: "Scopri gli show",
+    href: "#show"
+  }
+];
 
 const VOD_ITEMS: VodItem[] = [
   {
@@ -203,9 +235,11 @@ export default function HomePage() {
     return RECENT_EPISODES.filter((item) => item.category.toLowerCase().replaceAll(" ", "-") === activeNetwork.id);
   }, [activeNetwork.id]);
 
-  const handleNetworkChange = useCallback((network: NetworkOption) => {
-    setActiveNetwork(network);
-  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.streamNetwork = activeNetwork.id;
+    document.documentElement.style.setProperty("--stream-theme", activeNetwork.themeColor);
+    document.documentElement.style.setProperty("--stream-accent", activeNetwork.accentColor);
+  }, [activeNetwork]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -285,11 +319,13 @@ export default function HomePage() {
 
   return (
     <main className="min-h-viewport bg-canvas-950 text-white">
-      <ChannelSwitcher activeNetwork={activeNetwork.id} onNetworkChange={handleNetworkChange} />
+      <SiteHeader />
       <HomeMenu />
 
+      <HeroCarousel slides={HERO_SLIDES} />
+
       <div className="mx-auto flex max-w-content flex-col gap-8 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
+        <section id="web-live" className="grid scroll-mt-32 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
           <div className="min-w-0">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">
@@ -361,14 +397,41 @@ export default function HomePage() {
 
         <div className="space-y-8">
           <VodCarousel
-            title="Most Watched"
+            id="sitcom"
+            className="scroll-mt-32"
+            title="Sitcom"
             items={filteredMostWatched.length > 0 ? filteredMostWatched : VOD_ITEMS}
           />
           <VodCarousel
-            title="Recent Episodes"
+            id="telegaribaldi"
+            className="scroll-mt-32"
+            title="Telegaribaldi"
             items={filteredRecentEpisodes.length > 0 ? filteredRecentEpisodes : RECENT_EPISODES}
           />
-          <VodCarousel title="Categories" items={CATEGORY_ITEMS} />
+          <VodCarousel
+            id="show"
+            className="scroll-mt-32"
+            title="Show"
+            items={VOD_ITEMS}
+          />
+          <VodCarousel
+            id="morning"
+            className="scroll-mt-32"
+            title="Morning"
+            items={RECENT_EPISODES}
+          />
+          <VodCarousel
+            id="rubriche"
+            className="scroll-mt-32"
+            title="Rubriche"
+            items={CATEGORY_ITEMS}
+          />
+          <VodCarousel
+            id="news"
+            className="scroll-mt-32"
+            title="News"
+            items={CATEGORY_ITEMS}
+          />
         </div>
       </div>
     </main>
