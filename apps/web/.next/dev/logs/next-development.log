@@ -1,7 +1,0 @@
-{"timestamp":"00:00:01.566","source":"Server","level":"LOG","message":"- Experiments (use with caution):"}
-{"timestamp":"00:00:01.566","source":"Server","level":"LOG","message":"  · optimizePackageImports"}
-{"timestamp":"00:00:01.567","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:00:51.745","source":"Server","level":"LOG","message":"○ Compiling / ..."}
-{"timestamp":"00:00:53.580","source":"Server","level":"ERROR","message":"Error: EPIPE: broken pipe, write"}
-{"timestamp":"00:00:53.594","source":"Server","level":"ERROR","message":"⨯ \"uncaughtException:\" Error: EPIPE: broken pipe, write"}
-{"timestamp":"00:00:53.605","source":"Server","level":"ERROR","message":"⨯ \"uncaughtException: \" Error: EPIPE: broken pipe, write"}

@@ -1,8 +1,0 @@
-{
-  "/_global-error/page": "app/_global-error/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/channels/route": "app/api/channels/route.js",
-  "/api/epg/route": "app/api/epg/route.js",
-  "/api/watch-history/route": "app/api/watch-history/route.js",
-  "/page": "app/page.js"
-}
