@@ -7,8 +7,10 @@ import ChannelSwitcher, {
   type NetworkOption
 } from "@/components/ChannelSwitcher";
 import EpgGrid, { type EpgProgram } from "@/components/EpgGrid";
+import HomeMenu from "@/components/HomeMenu";
 import VideoPlayer from "@/components/VideoPlayer";
 import VodCarousel, { type VodItem } from "@/components/VodCarousel";
+import { buildBackendUrl, buildVastTagUrl } from "@/lib/platform-config";
 
 type LiveChannel = {
   id: string;
@@ -212,7 +214,8 @@ export default function HomePage() {
       setIsChannelsLoading(true);
 
       try {
-        const response = await fetch("/api/channels", {
+        const response = await fetch(buildBackendUrl("/api/channels"), {
+          credentials: "include",
           signal: controller.signal
         });
 
@@ -250,9 +253,13 @@ export default function HomePage() {
       setIsEpgLoading(true);
 
       try {
-        const response = await fetch(`/api/epg?channelId=${encodeURIComponent(activeChannel.id)}`, {
-          signal: controller.signal
-        });
+        const response = await fetch(
+          buildBackendUrl(`/api/epg?channelId=${encodeURIComponent(activeChannel.id)}`),
+          {
+            credentials: "include",
+            signal: controller.signal
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Unable to load EPG");
@@ -279,6 +286,7 @@ export default function HomePage() {
   return (
     <main className="min-h-viewport bg-canvas-950 text-white">
       <ChannelSwitcher activeNetwork={activeNetwork.id} onNetworkChange={handleNetworkChange} />
+      <HomeMenu />
 
       <div className="mx-auto flex max-w-content flex-col gap-8 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
@@ -306,6 +314,11 @@ export default function HomePage() {
               type="live"
               title={`${activeChannel.name} Live`}
               poster={activeChannel.logoUrl}
+              vastTagUrl={buildVastTagUrl({
+                placement: "live",
+                channelId: activeChannel.id,
+                network: activeNetwork.id
+              })}
               muted
               className="aspect-video"
             />

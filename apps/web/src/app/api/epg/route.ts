@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { corsJson, corsOptions } from "@/lib/cors";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -30,12 +31,17 @@ function parseLimit(value: string | null) {
   return Math.min(parsedValue, MAX_PROGRAM_LIMIT);
 }
 
+export function OPTIONS(request: NextRequest) {
+  return corsOptions(request);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const channelId = searchParams.get("channelId");
 
   if (!channelId) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "channelId query parameter is required"
       },
@@ -56,7 +62,8 @@ export async function GET(request: NextRequest) {
   });
 
   if (!channel) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "Active channel not found"
       },
@@ -96,7 +103,7 @@ export async function GET(request: NextRequest) {
     endTime: program.endTime.toISOString()
   }));
 
-  return NextResponse.json({
+  return corsJson(request, {
     channelId,
     generatedAt: now.toISOString(),
     programs: epg

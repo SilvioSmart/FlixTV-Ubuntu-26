@@ -802,6 +802,11 @@
     background-color: #0d0f14;
   }
 
+  .bg-canvas-900\/80 {
+    background-color: #0d0f14cc;
+    background-color: lab(4.2853% .0852123 -3.02167 / .8);
+  }
+
   .bg-canvas-950 {
     background-color: #08090b;
   }
@@ -1126,6 +1131,11 @@
     font-weight: var(--font-weight-semibold);
   }
 
+  .tracking-\[0\.12em\] {
+    --tw-tracking: .12em;
+    letter-spacing: .12em;
+  }
+
   .tracking-\[0\.14em\] {
     --tw-tracking: .14em;
     letter-spacing: .14em;
@@ -1196,6 +1206,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .text-white\/60 {
       color: color-mix(in oklab, var(--color-white) 60%, transparent);
+    }
+  }
+
+  .text-white\/70 {
+    color: #ffffffb3;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-white\/70 {
+      color: color-mix(in oklab, var(--color-white) 70%, transparent);
     }
   }
 
@@ -1400,6 +1420,12 @@
       .hover\:bg-white\/\[0\.08\]:hover {
         background-color: color-mix(in oklab, var(--color-white) 8%, transparent);
       }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:text-white:hover {
+      color: var(--color-white);
     }
   }
 

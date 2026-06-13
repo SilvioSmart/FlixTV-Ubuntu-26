@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { corsJson, corsOptions } from "@/lib/cors";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -11,7 +12,11 @@ type ChannelResponse = {
   streamUrl: string;
 };
 
-export async function GET() {
+export function OPTIONS(request: NextRequest) {
+  return corsOptions(request);
+}
+
+export async function GET(request: NextRequest) {
   const channels: ChannelResponse[] = await prisma.liveChannel.findMany({
     where: {
       isActive: true
@@ -27,7 +32,7 @@ export async function GET() {
     }
   });
 
-  return NextResponse.json({
+  return corsJson(request, {
     channels
   });
 }

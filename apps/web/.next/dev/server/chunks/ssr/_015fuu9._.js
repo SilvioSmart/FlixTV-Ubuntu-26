@@ -14,8 +14,12 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 ;
 ;
 const metadata = {
-    title: "Stream-9",
-    description: "Live TV, EPG, and on-demand streaming for the Stream-9 platform."
+    metadataBase: new URL("https://www.flixtv.it"),
+    title: "FlixTV",
+    description: "Live TV, guida programmi e contenuti on demand su FlixTV.",
+    alternates: {
+        canonical: "https://www.flixtv.it"
+    }
 };
 const viewport = {
     width: "device-width",
@@ -30,12 +34,12 @@ function RootLayout({ children }) {
             children: children
         }, void 0, false, {
             fileName: "[project]/apps/web/src/app/layout.tsx",
-            lineNumber: 22,
+            lineNumber: 26,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/apps/web/src/app/layout.tsx",
-        lineNumber: 21,
+        lineNumber: 25,
         columnNumber: 5
     }, this);
 }

@@ -75,6 +75,18 @@ self.__SERVER_FILES_MANIFEST={
         {
           "protocol": "https",
           "hostname": "cdn.jsdelivr.net"
+        },
+        {
+          "protocol": "https",
+          "hostname": "www.flixtv.it"
+        },
+        {
+          "protocol": "https",
+          "hostname": "admin.flixtv.it"
+        },
+        {
+          "protocol": "https",
+          "hostname": "adsrv.org"
         }
       ],
       "qualities": [
@@ -118,6 +130,11 @@ self.__SERVER_FILES_MANIFEST={
       }
     },
     "outputFileTracingRoot": "D:\\FlixTV-Ubuntu-26",
+    "allowedDevOrigins": [
+      "http://localhost:3000",
+      "https://www.flixtv.it",
+      "https://admin.flixtv.it"
+    ],
     "cacheComponents": false,
     "cacheLife": {
       "default": {

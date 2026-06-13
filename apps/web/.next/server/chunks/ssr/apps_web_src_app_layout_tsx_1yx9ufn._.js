@@ -1,3 +1,3 @@
-module.exports=[77930,a=>{"use strict";var b=a.i(7997);a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"it",className:"dark",children:(0,b.jsx)("body",{children:a})})},"metadata",0,{title:"Stream-9",description:"Live TV, EPG, and on-demand streaming for the Stream-9 platform."},"viewport",0,{width:"device-width",initialScale:1,themeColor:"#08090b"}])},34005,a=>{a.n(a.i(77930))}];
+module.exports=[77930,a=>{"use strict";var b=a.i(7997);let c={metadataBase:new URL("https://www.flixtv.it"),title:"FlixTV",description:"Live TV, guida programmi e contenuti on demand su FlixTV.",alternates:{canonical:"https://www.flixtv.it"}};a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"it",className:"dark",children:(0,b.jsx)("body",{children:a})})},"metadata",0,c,"viewport",0,{width:"device-width",initialScale:1,themeColor:"#08090b"}])},34005,a=>{a.n(a.i(77930))}];
 
 //# sourceMappingURL=apps_web_src_app_layout_tsx_1yx9ufn._.js.map

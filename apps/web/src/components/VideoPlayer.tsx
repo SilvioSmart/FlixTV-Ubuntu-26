@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Maximize, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
 import videojs from "video.js";
+import { buildBackendUrl } from "@/lib/platform-config";
 
 type PlaybackType = "live" | "vod";
 
@@ -12,6 +13,7 @@ type VideoPlayerProps = {
   title?: string;
   poster?: string;
   videoId?: string;
+  vastTagUrl?: string;
   autoPlay?: boolean;
   muted?: boolean;
   className?: string;
@@ -49,6 +51,7 @@ export default function VideoPlayer({
   title,
   poster,
   videoId,
+  vastTagUrl,
   autoPlay = false,
   muted = false,
   className = ""
@@ -242,10 +245,12 @@ export default function VideoPlayer({
       trackingAbortRef.current?.abort();
       trackingAbortRef.current = new AbortController();
 
-      void fetch("/api/watch-history", {
+      void fetch(buildBackendUrl("/api/watch-history"), {
         method: "POST",
+        credentials: "include",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(vastTagUrl ? { "X-Vast-Tag": vastTagUrl } : {})
         },
         body: JSON.stringify({
           videoId,
@@ -266,7 +271,7 @@ export default function VideoPlayer({
       window.clearInterval(intervalId);
       trackingAbortRef.current?.abort();
     };
-  }, [shouldTrackWatchHistory, videoId]);
+  }, [shouldTrackWatchHistory, vastTagUrl, videoId]);
 
   const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const progressValue = duration > 0 ? Math.min((currentTime / duration) * 100, 100) : 0;

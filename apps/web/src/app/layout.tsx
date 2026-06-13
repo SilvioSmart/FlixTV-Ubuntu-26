@@ -2,8 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Stream-9",
-  description: "Live TV, EPG, and on-demand streaming for the Stream-9 platform."
+  metadataBase: new URL("https://www.flixtv.it"),
+  title: "FlixTV",
+  description: "Live TV, guida programmi e contenuti on demand su FlixTV.",
+  alternates: {
+    canonical: "https://www.flixtv.it"
+  }
 };
 
 export const viewport: Viewport = {

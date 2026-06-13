@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { corsJson, corsOptions } from "@/lib/cors";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -21,11 +22,16 @@ function parsePlaybackTime(value: unknown) {
   return Math.max(0, Math.floor(value));
 }
 
+export function OPTIONS(request: NextRequest) {
+  return corsOptions(request);
+}
+
 export async function POST(request: NextRequest) {
   const userId = getAuthenticatedUserId(request);
 
   if (!userId) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "Authentication required"
       },
@@ -40,7 +46,8 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as WatchHistoryRequestBody;
   } catch {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "Invalid JSON body"
       },
@@ -51,7 +58,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (typeof body.videoId !== "string" || body.videoId.length === 0) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "videoId is required"
       },
@@ -64,7 +72,8 @@ export async function POST(request: NextRequest) {
   const currentPlaybackTime = parsePlaybackTime(body.currentTime);
 
   if (currentPlaybackTime === null) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "currentTime must be a finite number"
       },
@@ -95,7 +104,8 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (!user) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "User not found"
       },
@@ -106,7 +116,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (!video) {
-    return NextResponse.json(
+    return corsJson(
+      request,
       {
         error: "Video content not found"
       },
@@ -141,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  return NextResponse.json({
+  return corsJson(request, {
     watchHistory: {
       ...watchHistory,
       updatedAt: watchHistory.updatedAt.toISOString()
