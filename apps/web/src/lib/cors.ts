@@ -4,6 +4,7 @@ import { FRONTEND_ORIGIN } from "@/lib/platform-config";
 const ALLOWED_ORIGINS = new Set([
   FRONTEND_ORIGIN,
   "https://flixtv.it",
+  "https://admin.flixtv.it",
   "http://localhost:3000"
 ]);
 

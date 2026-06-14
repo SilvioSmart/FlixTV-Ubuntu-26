@@ -15,10 +15,15 @@ export type HeroSlide = {
 
 type HeroCarouselProps = {
   slides: HeroSlide[];
+  autoplayMs?: number;
   className?: string;
 };
 
-export default function HeroCarousel({ slides, className = "" }: HeroCarouselProps) {
+export default function HeroCarousel({
+  slides,
+  autoplayMs = 6000,
+  className = ""
+}: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -43,10 +48,10 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
       return;
     }
 
-    const intervalId = window.setInterval(goToNext, 6_000);
+    const intervalId = window.setInterval(goToNext, autoplayMs);
 
     return () => window.clearInterval(intervalId);
-  }, [goToNext, isPaused, slides.length]);
+  }, [autoplayMs, goToNext, isPaused, slides.length]);
 
   if (!activeSlide) {
     return null;
