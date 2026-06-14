@@ -73,14 +73,14 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
       </div>
 
       <div className="relative mx-auto flex min-h-[500px] max-w-content items-end px-4 pb-10 pt-20 sm:min-h-[560px] sm:px-6 lg:min-h-[640px] lg:px-8">
-        <div key={activeSlide.id} className="reveal-from-left max-w-2xl">
+        <div key={activeSlide.id} className="reveal-from-left max-w-2xl text-left lg:-ml-10 xl:-ml-16">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
             {activeSlide.eyebrow}
           </p>
           <h1 className="mt-3 text-4xl font-black uppercase leading-none text-white sm:text-6xl lg:text-7xl">
             {activeSlide.title}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/75 sm:text-lg">
+          <p className="mt-5 max-w-xl text-left text-base leading-7 text-white/75 sm:text-lg">
             {activeSlide.description}
           </p>
           <a

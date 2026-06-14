@@ -42,7 +42,7 @@ input {
 }
 
 .reveal-from-left {
-  animation: reveal-from-left 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: reveal-from-left 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes hero-image-scroll {
