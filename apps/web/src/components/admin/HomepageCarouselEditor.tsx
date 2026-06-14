@@ -87,6 +87,21 @@ function reorderSlides(
   return nextSlides;
 }
 
+function getPreviewImageUrl(imageUrl: string, version: number) {
+  const cleanImageUrl = imageUrl.trim();
+
+  if (!cleanImageUrl) {
+    return "";
+  }
+
+  const absoluteUrl = cleanImageUrl.startsWith("http")
+    ? cleanImageUrl
+    : buildBackendUrl(cleanImageUrl);
+  const separator = absoluteUrl.includes("?") ? "&" : "?";
+
+  return `${absoluteUrl}${separator}v=${version}`;
+}
+
 export default function HomepageCarouselEditor() {
   const [slides, setSlides] = useState<HomepageSlideInput[]>(() =>
     toInputSlides(getDefaultHomepageSlides())
@@ -95,6 +110,10 @@ export default function HomepageCarouselEditor() {
   const [message, setMessage] = useState("Caricamento carousel homepage.");
   const [isDirty, setIsDirty] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [previewVersion, setPreviewVersion] = useState(Date.now());
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(
+    () => new Set()
+  );
 
   const activeSlides = useMemo(
     () => slides.filter((slide) => slide.isActive && slide.imageUrl.trim()),
@@ -162,6 +181,10 @@ export default function HomepageCarouselEditor() {
     );
   }
 
+  function getSlidePreviewId(slide: HomepageSlideInput, index: number) {
+    return slide.id ?? `slide-${index}`;
+  }
+
   async function uploadImage(index: number, event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
 
@@ -197,6 +220,12 @@ export default function HomepageCarouselEditor() {
 
       updateSlide(index, {
         imageUrl: data.imageUrl
+      });
+      setPreviewVersion(Date.now());
+      setBrokenImageIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.delete(getSlidePreviewId(slides[index] ?? createSlide(), index));
+        return nextIds;
       });
       setMessage(
         `Immagine convertita in WEBP ${data.width ?? 1920}x${data.height ?? 1080}. Premi Salva per pubblicare la slide.`
@@ -276,22 +305,40 @@ export default function HomepageCarouselEditor() {
         ) : null}
 
         <div className="space-y-4">
-          {slides.map((slide, index) => (
+          {slides.map((slide, index) => {
+            const previewId = getSlidePreviewId(slide, index);
+            const previewImageUrl = getPreviewImageUrl(slide.imageUrl, previewVersion);
+
+            return (
             <article
               key={slide.id ?? index}
               className="grid gap-4 rounded-md border border-white/10 bg-black/35 p-4 lg:grid-cols-[260px_minmax(0,1fr)]"
             >
               <div className="space-y-3">
                 <div className="aspect-video overflow-hidden rounded-md border border-white/10 bg-black">
-                  {slide.imageUrl ? (
+                  {previewImageUrl && !brokenImageIds.has(previewId) ? (
                     <img
-                      src={slide.imageUrl}
+                      src={previewImageUrl}
                       alt=""
                       className="h-full w-full object-cover"
+                      onError={() =>
+                        setBrokenImageIds((currentIds) => {
+                          const nextIds = new Set(currentIds);
+                          nextIds.add(previewId);
+                          return nextIds;
+                        })
+                      }
                     />
                   ) : (
-                    <div className="grid h-full place-items-center text-white/35">
-                      <ImagePlus size={34} />
+                    <div className="grid h-full place-items-center p-4 text-center text-white/35">
+                      <div>
+                        <ImagePlus size={34} className="mx-auto" />
+                        {slide.imageUrl ? (
+                          <p className="mt-3 text-xs leading-5 text-red-100/75">
+                            File convertito ma non raggiungibile via web.
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -473,7 +520,8 @@ export default function HomepageCarouselEditor() {
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </div>
 

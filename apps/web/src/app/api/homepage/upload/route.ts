@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
@@ -12,7 +12,7 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const CAROUSEL_WIDTH = 1920;
 const CAROUSEL_HEIGHT = 1080;
 const WEBP_QUALITY = 82;
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "homepage");
+const UPLOAD_PATH_SEGMENTS = ["uploads", "homepage"];
 const PUBLIC_UPLOAD_PATH = "/uploads/homepage";
 const ALLOWED_IMAGE_TYPES = new Map([
   ["image/jpeg", "jpg"],
@@ -38,6 +38,17 @@ function cleanFileName(fileName: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+async function getUploadDir() {
+  const monorepoWebPackage = path.join(process.cwd(), "apps", "web", "package.json");
+
+  try {
+    await access(monorepoWebPackage);
+    return path.join(process.cwd(), "apps", "web", "public", ...UPLOAD_PATH_SEGMENTS);
+  } catch {
+    return path.join(process.cwd(), "public", ...UPLOAD_PATH_SEGMENTS);
+  }
 }
 
 export function OPTIONS(request: NextRequest) {
@@ -101,7 +112,8 @@ export async function POST(request: NextRequest) {
   const sourceBytes = Buffer.from(await file.arrayBuffer());
   const baseName = cleanFileName(file.name) || "homepage-slide";
   const storedFileName = `${Date.now()}-${baseName}.webp`;
-  const filePath = path.join(UPLOAD_DIR, storedFileName);
+  const uploadDir = await getUploadDir();
+  const filePath = path.join(uploadDir, storedFileName);
 
   let convertedImage: Buffer;
 
@@ -134,13 +146,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await mkdir(UPLOAD_DIR, {
+  await mkdir(uploadDir, {
     recursive: true
   });
   await writeFile(filePath, convertedImage);
 
+  const imageUrl = `${PUBLIC_UPLOAD_PATH}/${storedFileName}`;
+  const previewUrl = new URL(imageUrl, request.nextUrl.origin).toString();
+
   return corsJson(request, {
-    imageUrl: `${PUBLIC_UPLOAD_PATH}/${storedFileName}`,
+    imageUrl,
+    previewUrl,
     fileName: storedFileName,
     originalFileName: file.name,
     originalType: file.type,
