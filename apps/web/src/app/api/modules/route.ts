@@ -100,6 +100,18 @@ function buildVideoOrderBy(query: ModuleMediaQuery): Prisma.VideoContentOrderByW
   };
 }
 
+function getFallbackItemsForModule(module: ModuleConfigRecord) {
+  const normalizedTitle = module.title.trim().toLowerCase();
+  const fallbackModule =
+    DEFAULT_HOME_CONFIG.modules.find((defaultModule) => defaultModule.id === module.slug) ??
+    DEFAULT_HOME_CONFIG.modules.find(
+      (defaultModule) => defaultModule.title.trim().toLowerCase() === normalizedTitle
+    ) ??
+    DEFAULT_HOME_CONFIG.modules[0];
+
+  return fallbackModule?.items.slice(0, module.mediaQuery.limit) ?? [];
+}
+
 export function OPTIONS(request: NextRequest) {
   return corsOptions(request);
 }
@@ -142,21 +154,16 @@ export async function GET(request: NextRequest) {
             orderBy: buildVideoOrderBy(module.mediaQuery),
             take: module.mediaQuery.limit
           });
+          const items = videos.length > 0
+            ? videos.map(videoContentToHomeVideoItem)
+            : getFallbackItemsForModule(module);
 
-          return buildVideoGalleryModule(
-            module,
-            videos.map(videoContentToHomeVideoItem)
-          );
+          return buildVideoGalleryModule(module, items);
         })
     );
 
-    const modulesWithItems = modules.filter((module) => module.items.length > 0);
-
     return corsJson(request, {
-      modules:
-        modulesWithItems.length > 0
-          ? modulesWithItems
-          : DEFAULT_HOME_CONFIG.modules
+      modules
     });
   } catch {
     return corsJson(request, {

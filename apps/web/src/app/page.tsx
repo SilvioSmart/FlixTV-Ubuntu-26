@@ -61,6 +61,7 @@ export default function HomePage() {
             signal: controller.signal
           }),
           fetch(buildBackendUrl("/api/modules"), {
+            cache: "no-store",
             credentials: "include",
             signal: controller.signal
           })
