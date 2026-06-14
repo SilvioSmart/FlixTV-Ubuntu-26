@@ -35,3 +35,41 @@ input {
 .video-js .vjs-tech {
   object-fit: contain;
 }
+
+.hero-carousel-image {
+  animation: hero-image-scroll 6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center;
+}
+
+.reveal-from-left {
+  animation: reveal-from-left 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes hero-image-scroll {
+  from {
+    transform: scale(1.08) translateX(-2.5%);
+  }
+
+  to {
+    transform: scale(1.14) translateX(2.5%);
+  }
+}
+
+@keyframes reveal-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-42px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel-image,
+  .reveal-from-left {
+    animation: none;
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 export type HeroSlide = {
@@ -20,6 +20,7 @@ type HeroCarouselProps = {
 
 export default function HeroCarousel({ slides, className = "" }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const activeSlide = useMemo(() => {
     return slides[activeIndex] ?? slides[0];
@@ -37,6 +38,16 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
     );
   }, [slides.length]);
 
+  useEffect(() => {
+    if (isPaused || slides.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(goToNext, 6_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [goToNext, isPaused, slides.length]);
+
   if (!activeSlide) {
     return null;
   }
@@ -45,19 +56,24 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
     <section
       className={`relative isolate overflow-hidden bg-black ${className}`}
       aria-label="Contenuti in evidenza"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
     >
       <div className="absolute inset-0">
         <img
+          key={activeSlide.id}
           src={activeSlide.imageUrl}
           alt=""
-          className="h-full w-full object-cover opacity-70"
+          className="hero-carousel-image h-full w-full object-cover opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/10" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-canvas-950 to-transparent" />
       </div>
 
       <div className="relative mx-auto flex min-h-[500px] max-w-content items-end px-4 pb-10 pt-20 sm:min-h-[560px] sm:px-6 lg:min-h-[640px] lg:px-8">
-        <div className="max-w-2xl">
+        <div key={activeSlide.id} className="reveal-from-left max-w-2xl">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
             {activeSlide.eyebrow}
           </p>

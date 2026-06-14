@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import EpgGrid, { type EpgProgram } from "@/components/EpgGrid";
 import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
-import HomeMenu from "@/components/HomeMenu";
 import SiteHeader from "@/components/SiteHeader";
 import VideoPlayer from "@/components/VideoPlayer";
 import VodCarousel, { type VodItem } from "@/components/VodCarousel";
@@ -357,7 +356,6 @@ export default function HomePage() {
   return (
     <main className="min-h-viewport bg-canvas-950 text-white">
       <SiteHeader />
-      <HomeMenu />
 
       <HeroCarousel slides={HERO_SLIDES} />
 

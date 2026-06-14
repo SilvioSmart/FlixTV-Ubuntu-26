@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 
 export type VodItem = {
@@ -26,13 +27,45 @@ export default function VodCarousel({
   emptyMessage = "No titles available in this row.",
   className = ""
 }: VodCarouselProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      {
+        threshold: 0.18
+      }
+    );
+
+    observer.observe(section);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section
+      ref={sectionRef}
       id={id}
       className={className}
       aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-heading`}
     >
-      <div className="mb-3 flex items-end justify-between gap-4 px-1">
+      <div
+        className={`mb-3 flex items-end justify-between gap-4 px-1 ${
+          isVisible ? "reveal-from-left" : "opacity-0"
+        }`}
+      >
         <h2 id={`${title.toLowerCase().replaceAll(" ", "-")}-heading`} className="text-xl font-black text-white sm:text-2xl">
           {title}
         </h2>
@@ -46,12 +79,12 @@ export default function VodCarousel({
           {emptyMessage}
         </div>
       ) : (
-        <div className="overflow-x-auto pb-3">
+        <div className="snap-x overflow-x-auto scroll-smooth pb-3">
           <div className="flex min-w-max gap-3 sm:gap-4">
             {items.map((item) => (
               <article
                 key={item.id}
-                className="group w-[188px] shrink-0 overflow-hidden rounded-md border border-white/10 bg-white/[0.05] transition duration-200 ease-stream-out hover:-translate-y-1 hover:border-white/25 hover:bg-white/[0.08] sm:w-[236px] lg:w-[260px]"
+                className="group w-[188px] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-white/[0.05] transition duration-200 ease-stream-out hover:-translate-y-1 hover:border-white/25 hover:bg-white/[0.08] sm:w-[236px] lg:w-[260px]"
               >
                 <div className="relative aspect-video overflow-hidden bg-canvas-800">
                   <img
