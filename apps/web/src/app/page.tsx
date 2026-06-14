@@ -24,6 +24,10 @@ type HomepageSlidesResponse = {
   slides?: HomepageSlideRecord[];
 };
 
+type ModulesResponse = {
+  modules?: HomeConfig["modules"];
+};
+
 const FLIXTV_THEME = {
   id: "flixtv",
   themeColor: "#e50914",
@@ -47,12 +51,16 @@ export default function HomePage() {
       setIsConfigLoading(true);
 
       try {
-        const [homeConfigResponse, homepageSlidesResponse] = await Promise.all([
+        const [homeConfigResponse, homepageSlidesResponse, modulesResponse] = await Promise.all([
           fetch(buildBackendUrl("/api/home-config"), {
             credentials: "include",
             signal: controller.signal
           }),
           fetch(buildBackendUrl("/api/homepage"), {
+            credentials: "include",
+            signal: controller.signal
+          }),
+          fetch(buildBackendUrl("/api/modules"), {
             credentials: "include",
             signal: controller.signal
           })
@@ -73,6 +81,10 @@ export default function HomePage() {
               ? homepageSlidesData.slides.map(toHeroSlide)
               : getDefaultHomepageSlides().map(toHeroSlide);
 
+          const modulesData = modulesResponse.ok
+            ? (await modulesResponse.json()) as ModulesResponse
+            : null;
+
           setHomeConfig({
             ...nextHomeConfig,
             head: {
@@ -82,7 +94,24 @@ export default function HomePage() {
                 slides[0]?.imageEffectMs ?? nextHomeConfig.head.autoplayMs
               ),
               slides
-            }
+            },
+            modules:
+              modulesData?.modules && modulesData.modules.length > 0
+                ? modulesData.modules
+                : nextHomeConfig.modules
+          });
+          return;
+        }
+
+        if (modulesResponse.ok) {
+          const modulesData = (await modulesResponse.json()) as ModulesResponse;
+
+          setHomeConfig({
+            ...nextHomeConfig,
+            modules:
+              modulesData.modules && modulesData.modules.length > 0
+                ? modulesData.modules
+                : nextHomeConfig.modules
           });
           return;
         }
