@@ -61,6 +61,8 @@ export default function HeroCarousel({
     return null;
   }
 
+  const textEffectMs = activeSlide.textEffectMs ?? 1500;
+
   return (
     <section
       className={`relative isolate overflow-hidden bg-black ${className}`}
@@ -87,28 +89,52 @@ export default function HeroCarousel({
       <div className="relative flex min-h-[500px] w-full items-end px-4 pb-10 pt-20 sm:min-h-[560px] sm:px-6 lg:min-h-[640px] lg:px-10 xl:px-14 2xl:px-16">
         <div
           key={activeSlide.id}
-          className="reveal-from-screen-left max-w-2xl text-left"
-          style={{
-            animationDuration: `${activeSlide.textEffectMs ?? 1500}ms`
-          }}
+          className="max-w-2xl text-left"
         >
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
+          <p
+            className="hero-text-reveal text-xs font-black uppercase tracking-[0.22em] text-white/60"
+            style={{
+              animationDuration: `${textEffectMs}ms`
+            }}
+          >
             {activeSlide.eyebrow}
           </p>
-          <h1 className="mt-3 text-4xl font-black uppercase leading-none text-white sm:text-6xl lg:text-7xl">
+          <h1
+            className="hero-text-reveal mt-3 text-4xl font-black uppercase leading-none text-white sm:text-6xl lg:text-7xl"
+            style={{
+              animationDelay: `${Math.round(textEffectMs * 0.12)}ms`,
+              animationDuration: `${textEffectMs}ms`
+            }}
+          >
             {activeSlide.title}
           </h1>
           {activeSlide.subtitle ? (
-            <h2 className="mt-3 max-w-2xl text-xl font-black uppercase leading-tight text-white/85 sm:text-2xl">
+            <h2
+              className="hero-text-reveal mt-3 max-w-2xl text-xl font-black uppercase leading-tight text-white/85 sm:text-2xl"
+              style={{
+                animationDelay: `${Math.round(textEffectMs * 0.22)}ms`,
+                animationDuration: `${textEffectMs}ms`
+              }}
+            >
               {activeSlide.subtitle}
             </h2>
           ) : null}
-          <p className="mt-5 max-w-xl text-left text-base leading-7 text-white/75 sm:text-lg">
+          <p
+            className="hero-text-reveal mt-5 max-w-xl text-left text-base leading-7 text-white/75 sm:text-lg"
+            style={{
+              animationDelay: `${Math.round(textEffectMs * 0.32)}ms`,
+              animationDuration: `${textEffectMs}ms`
+            }}
+          >
             {activeSlide.description}
           </p>
           <a
             href={activeSlide.href}
-            className="mt-7 inline-flex h-12 items-center gap-3 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-white/90"
+            className="hero-text-reveal mt-7 inline-flex h-12 items-center gap-3 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-white/90"
+            style={{
+              animationDelay: `${Math.round(textEffectMs * 0.42)}ms`,
+              animationDuration: `${textEffectMs}ms`
+            }}
           >
             <Play size={18} fill="currentColor" />
             {activeSlide.ctaLabel}

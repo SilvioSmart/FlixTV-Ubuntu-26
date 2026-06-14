@@ -49,6 +49,28 @@ input {
   animation: reveal-from-screen-left 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.hero-text-reveal {
+  animation: hero-text-reveal 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  clip-path: inset(0 100% 0 0);
+  position: relative;
+}
+
+.hero-text-reveal::after {
+  animation: hero-text-reveal-shine 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+  content: "";
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-120%);
+}
+
 @keyframes hero-image-scroll {
   from {
     transform: scale(1.08) translateX(-2.5%);
@@ -56,6 +78,44 @@ input {
 
   to {
     transform: scale(1.14) translateX(2.5%);
+  }
+}
+
+@keyframes hero-text-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-text-reveal-shine {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+
+  18% {
+    opacity: 0.8;
+  }
+
+  80% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(120%);
   }
 }
 
@@ -89,9 +149,12 @@ input {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-carousel-image,
+  .hero-text-reveal,
+  .hero-text-reveal::after,
   .reveal-from-left,
   .reveal-from-screen-left {
     animation: none;
+    clip-path: none;
   }
 }
 

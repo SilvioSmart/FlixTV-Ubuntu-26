@@ -460,7 +460,7 @@ export default function HomepageCarouselEditor() {
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
-                      Effetto testo ms
+                      Text reveal ms
                     </span>
                     <input
                       type="number"
