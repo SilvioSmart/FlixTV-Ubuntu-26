@@ -72,8 +72,8 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-canvas-950 to-transparent" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[500px] max-w-content items-end px-4 pb-10 pt-20 sm:min-h-[560px] sm:px-6 lg:min-h-[640px] lg:px-8">
-        <div key={activeSlide.id} className="reveal-from-left max-w-2xl text-left lg:-ml-10 xl:-ml-16">
+      <div className="relative flex min-h-[500px] w-full items-end px-4 pb-10 pt-20 sm:min-h-[560px] sm:px-6 lg:min-h-[640px] lg:px-10 xl:px-14 2xl:px-16">
+        <div key={activeSlide.id} className="reveal-from-screen-left max-w-2xl text-left">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
             {activeSlide.eyebrow}
           </p>
@@ -92,7 +92,7 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
           </a>
         </div>
 
-        <div className="absolute bottom-10 right-4 flex items-center gap-2 sm:right-6 lg:right-8">
+        <div className="absolute bottom-10 right-4 flex items-center gap-2 sm:right-6 lg:right-10 xl:right-14 2xl:right-16">
           <button
             type="button"
             onClick={goToPrevious}
@@ -111,7 +111,7 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
           </button>
         </div>
 
-        <div className="absolute bottom-5 left-4 flex gap-2 sm:left-6 lg:left-8">
+        <div className="absolute bottom-5 left-4 flex gap-2 sm:left-6 lg:left-10 xl:left-14 2xl:left-16">
           {slides.map((slide, index) => (
             <button
               key={slide.id}
