@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import SiteHeader from "@/components/SiteHeader";
-import VideoGalleryModule from "@/components/VideoGalleryModule";
+import SonicPlaylistBlock from "@/components/SonicPlaylistBlock";
 import {
   DEFAULT_HOME_CONFIG,
   normalizeHomeConfig,
@@ -92,7 +92,7 @@ export default function HomePage() {
         ) : null}
 
         {enabledModules.map((module) => (
-          <VideoGalleryModule key={module.id} module={module} />
+          <SonicPlaylistBlock key={module.id} module={module} />
         ))}
       </div>
     </main>
