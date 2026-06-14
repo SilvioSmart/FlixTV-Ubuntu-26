@@ -1,53 +1,43 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ChevronDown, Search, Tv } from "lucide-react";
-
-const MAIN_NAV_ITEMS = [
-  {
-    label: "sitcom",
-    href: "#sitcom",
-    submenu: [
-      {
-        label: "Fuori Corso",
-        href: "#fuori-corso"
-      },
-      {
-        label: "Bed&Breakfast",
-        href: "#bed-and-breakfast"
-      },
-      {
-        label: "Tutti a Casa",
-        href: "#tutti-a-casa"
-      }
-    ]
-  },
-  {
-    label: "telegaribaldi",
-    href: "#telegaribaldi"
-  },
-  {
-    label: "show",
-    href: "#show"
-  },
-  {
-    label: "morning",
-    href: "#morning"
-  },
-  {
-    label: "rubriche",
-    href: "#rubriche"
-  },
-  {
-    label: "news",
-    href: "#news"
-  },
-  {
-    label: "web-live",
-    href: "#web-live"
-  }
-];
+import { DEFAULT_HOME_MENU, type MenuNode } from "@/lib/menu-config";
+import { buildBackendUrl } from "@/lib/platform-config";
 
 export default function SiteHeader() {
+  const [menuItems, setMenuItems] = useState<MenuNode[]>(DEFAULT_HOME_MENU);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadMenu() {
+      try {
+        const response = await fetch(buildBackendUrl("/api/menu"), {
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { menu?: MenuNode[] };
+
+        if (Array.isArray(data.menu)) {
+          setMenuItems(data.menu);
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setMenuItems(DEFAULT_HOME_MENU);
+        }
+      }
+    }
+
+    void loadMenu();
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <header className="sticky top-0 z-header border-b border-white/10 bg-black/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-content items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -64,20 +54,20 @@ export default function SiteHeader() {
           aria-label="Menu principale"
           className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex"
         >
-          {MAIN_NAV_ITEMS.map((item) => (
+          {menuItems.map((item) => (
             <div key={item.label} className="group relative">
               <a
                 href={item.href}
                 className="inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-[0.12em] text-white/70 transition hover:text-white"
               >
                 {item.label}
-                {item.submenu ? <ChevronDown size={14} /> : null}
+                {item.children.length > 0 ? <ChevronDown size={14} /> : null}
               </a>
 
-              {item.submenu ? (
+              {item.children.length > 0 ? (
                 <div className="absolute left-0 top-full z-overlay hidden min-w-[260px] pt-5 group-hover:block group-focus-within:block">
                   <div className="rounded-md border border-white/10 bg-black/95 p-2 shadow-rail backdrop-blur-xl">
-                    {item.submenu.map((submenuItem) => (
+                    {item.children.map((submenuItem) => (
                       <a
                         key={submenuItem.href}
                         href={submenuItem.href}

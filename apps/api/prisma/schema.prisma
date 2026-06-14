@@ -51,6 +51,26 @@ model Account {
   @@index([userId])
 }
 
+model MenuItem {
+  id        String     @id @default(cuid())
+  label     String
+  slug      String
+  href      String?
+  parentId  String?
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  location  String     @default("homepage")
+  parent    MenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MenuItem[] @relation("MenuTree")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([location, parentId, slug])
+  @@index([location, parentId, sortOrder])
+  @@index([isActive])
+  @@map("menu")
+}
+
 model LiveChannel {
   id        String            @id @default(cuid())
   name      String
