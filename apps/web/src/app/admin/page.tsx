@@ -185,7 +185,8 @@ export default function AdminHomeConfigPage() {
                   `defaultVideoId` e `items`.
                 </p>
                 <p>
-                  Ogni item video richiede `title`, `thumbnailUrl` e `videoUrl`.
+                  Ogni item video richiede `title`, `thumbnailUrl` e `videoUrl`; supporta anche
+                  `notes`, `series`, `episode` e `duration`.
                 </p>
               </div>
             </div>

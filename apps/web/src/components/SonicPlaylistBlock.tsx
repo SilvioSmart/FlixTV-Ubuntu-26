@@ -47,17 +47,6 @@ export default function SonicPlaylistBlock({ module }: SonicPlaylistBlockProps) 
       aria-labelledby={`${module.id}-heading`}
     >
       <div className="sonicPlaylistBlock__inner">
-        <div className="sonicPlaylistBlock__header">
-          <div>
-            <h2 id={`${module.id}-heading`} className="sonicPlaylistBlock__title">
-              {module.title}
-            </h2>
-            {module.subtitle ? (
-              <p className="sonicPlaylistBlock__subtitle">{module.subtitle}</p>
-            ) : null}
-          </div>
-        </div>
-
         <div className="sonicPlaylistBlock__layout">
           <div className="sonicPlaylistBlock__player">
             <VideoPlayer
@@ -76,51 +65,70 @@ export default function SonicPlaylistBlock({ module }: SonicPlaylistBlockProps) 
             </div>
           </div>
 
-          <div className="carousel carousel--sonicPlaylist sonicPlaylistBlock__carousel">
-            <button
-              type="button"
-              aria-label="Video precedenti"
-              className="sonicPlaylist-swiper-prev swiper-navigation"
-              onClick={() => scrollRail("previous")}
-            >
-              <ChevronLeft size={30} />
-            </button>
-
-            <div ref={railRef} className="sonicPlaylistBlock__rail">
-              {module.items.map((item) => {
-                const isSelected = item.id === selectedVideo.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSelectedVideoId(item.id)}
-                    className={`sonicPlaylistBlock__card ${isSelected ? "sonicPlaylistBlock__card--active" : ""}`}
-                  >
-                    <span className="sonicPlaylistBlock__thumb">
-                      <img src={item.thumbnailUrl} alt="" loading="lazy" />
-                      <span className="sonicPlaylistBlock__play">
-                        <Play size={16} fill="currentColor" />
-                      </span>
-                    </span>
-                    <span className="sonicPlaylistBlock__meta">
-                      <span className="sonicPlaylistBlock__cardCategory">{item.category}</span>
-                      <span className="sonicPlaylistBlock__cardTitle">{item.title}</span>
-                      <span className="sonicPlaylistBlock__duration">{item.duration}</span>
-                    </span>
-                  </button>
-                );
-              })}
+          <div className="sonicPlaylistBlock__content">
+            <div className="sonicPlaylistBlock__header">
+              <div>
+                <h2 id={`${module.id}-heading`} className="sonicPlaylistBlock__title">
+                  {module.title}
+                </h2>
+                {module.subtitle ? (
+                  <p className="sonicPlaylistBlock__subtitle">{module.subtitle}</p>
+                ) : null}
+              </div>
             </div>
 
-            <button
-              type="button"
-              aria-label="Video successivi"
-              className="sonicPlaylist-swiper-next swiper-navigation"
-              onClick={() => scrollRail("next")}
-            >
-              <ChevronRight size={30} />
-            </button>
+            <div className="carousel carousel--sonicPlaylist sonicPlaylistBlock__carousel">
+              <button
+                type="button"
+                aria-label="Video precedenti"
+                className="sonicPlaylist-swiper-prev swiper-navigation"
+                onClick={() => scrollRail("previous")}
+              >
+                <ChevronLeft size={30} />
+              </button>
+
+              <div ref={railRef} className="sonicPlaylistBlock__rail">
+                {module.items.map((item) => {
+                  const isSelected = item.id === selectedVideo.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedVideoId(item.id)}
+                      className={`sonicPlaylistBlock__card ${isSelected ? "sonicPlaylistBlock__card--active" : ""}`}
+                    >
+                      <span className="sonicPlaylistBlock__thumb">
+                        <img src={item.thumbnailUrl} alt="" loading="lazy" />
+                        <span className="sonicPlaylistBlock__play">
+                          <Play size={16} fill="currentColor" />
+                        </span>
+                      </span>
+                      <span className="sonicPlaylistBlock__meta">
+                        <span className="sonicPlaylistBlock__cardTitle">{item.title}</span>
+                        <span className="sonicPlaylistBlock__notes">
+                          {item.notes ?? item.description}
+                        </span>
+                        <span className="sonicPlaylistBlock__details">
+                          <span>{item.series ?? item.category}</span>
+                          {item.episode ? <span>{item.episode}</span> : null}
+                          <span>{item.duration}</span>
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                aria-label="Video successivi"
+                className="sonicPlaylist-swiper-next swiper-navigation"
+                onClick={() => scrollRail("next")}
+              >
+                <ChevronRight size={30} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

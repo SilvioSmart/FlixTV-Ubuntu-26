@@ -4,6 +4,9 @@ export type HomeVideoItem = {
   id: string;
   title: string;
   description: string;
+  notes?: string;
+  series?: string;
+  episode?: string;
   thumbnailUrl: string;
   videoUrl: string;
   category: string;
@@ -86,6 +89,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "sitcom-1",
           title: "Cash or Trash: la notte delle occasioni",
           description: "Oggetti rari, trattative serrate e collezionisti pronti a rischiare.",
+          notes: "Trattative serrate e oggetti rari in studio.",
+          series: "Sitcom",
+          episode: "Episodio 1",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1516387938699-a93567ec168e?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -96,6 +102,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "sitcom-2",
           title: "Primo Appuntamento: storie inaspettate",
           description: "Nuovi incontri, tavoli pieni di tensione e svolte romantiche.",
+          notes: "Incontri, equivoci e svolte romantiche.",
+          series: "Sitcom",
+          episode: "Episodio 2",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -116,6 +125,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "fuori-corso-1",
           title: "Fuori Corso: matricole allo sbando",
           description: "Coinquilini, esami impossibili e una vita universitaria sempre fuori programma.",
+          notes: "Matricole allo sbando tra lezioni e coinquilini.",
+          series: "Fuori Corso",
+          episode: "Puntata 1",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -126,6 +138,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "fuori-corso-2",
           title: "Fuori Corso: appello finale",
           description: "La sessione si avvicina e ogni scusa diventa una strategia di sopravvivenza.",
+          notes: "La sessione si avvicina e nessuno e pronto.",
+          series: "Fuori Corso",
+          episode: "Puntata 2",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1517486808906-6ca8b3f8e1c1?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -146,6 +161,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "bed-breakfast-1",
           title: "Bed&Breakfast: stanza con imprevisto",
           description: "Ospiti difficili, prenotazioni doppie e una reception che non dorme mai.",
+          notes: "Prenotazioni doppie e ospiti difficili.",
+          series: "Bed&Breakfast",
+          episode: "Puntata 1",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -156,6 +174,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "bed-breakfast-2",
           title: "Bed&Breakfast: colazione agitata",
           description: "Una mattina qualunque diventa una catena di equivoci tutta da ridere.",
+          notes: "Una colazione tranquilla diventa ingestibile.",
+          series: "Bed&Breakfast",
+          episode: "Puntata 2",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1495365200479-c4ed1d35e1aa?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -176,6 +197,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "tutti-casa-1",
           title: "Tutti a Casa: parenti in arrivo",
           description: "Una famiglia rumorosa, una casa troppo piccola e nessuna via di fuga.",
+          notes: "Parenti in arrivo e spazi sempre piu stretti.",
+          series: "Tutti a Casa",
+          episode: "Puntata 1",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -186,6 +210,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "tutti-casa-2",
           title: "Tutti a Casa: cena di pace",
           description: "Quando tutti promettono calma, la serata diventa subito memorabile.",
+          notes: "Una cena di pace con troppe cose da chiarire.",
+          series: "Tutti a Casa",
+          episode: "Puntata 2",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -206,6 +233,9 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
           id: "telegaribaldi-1",
           title: "Telegaribaldi: edizione del giorno",
           description: "Le principali notizie della giornata in formato video.",
+          notes: "Aggiornamento quotidiano con le notizie principali.",
+          series: "Telegaribaldi",
+          episode: "Edizione del giorno",
           thumbnailUrl:
             "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=900&q=80",
           videoUrl: DEMO_VIDEO_URL,
@@ -270,6 +300,9 @@ function normalizeVideoItem(value: unknown, index: number): HomeVideoItem | null
     id: isString(item.id) ? item.id : `video-${index + 1}`,
     title: item.title,
     description: isString(item.description) ? item.description : "",
+    notes: isString(item.notes) ? item.notes : undefined,
+    series: isString(item.series) ? item.series : isString(item.category) ? item.category : undefined,
+    episode: isString(item.episode) ? item.episode : undefined,
     thumbnailUrl: item.thumbnailUrl,
     videoUrl: item.videoUrl,
     category: isString(item.category) ? item.category : "Video",

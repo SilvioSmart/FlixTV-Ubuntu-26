@@ -96,6 +96,11 @@ input {
 }
 
 .sonicPlaylistBlock {
+  --sonic-page-margin: clamp(18px, 3.2vw, 60px);
+  --sonic-thumb-width: 210px;
+  --sonic-player-width: calc(var(--sonic-thumb-width) * 2);
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   position: relative;
   overflow: hidden;
   background: #010505;
@@ -104,11 +109,16 @@ input {
 }
 
 .sonicPlaylistBlock__inner {
-  padding: 32px 0 40px;
+  margin: 0 var(--sonic-page-margin);
+  padding: 26px 0;
 }
 
 .sonicPlaylistBlock__header {
-  padding: 0 20px 18px;
+  align-items: flex-start;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 116px;
+  padding: 0 0 18px;
 }
 
 .sonicPlaylistBlock__title {
@@ -129,13 +139,13 @@ input {
 
 .sonicPlaylistBlock__layout {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .sonicPlaylistBlock__player {
   position: relative;
   min-width: 0;
-  padding: 0 20px;
+  width: 100%;
 }
 
 .sonicPlaylistBlock__video {
@@ -146,7 +156,7 @@ input {
 
 .sonicPlaylistBlock__nowPlaying {
   background: linear-gradient(180deg, rgba(1, 5, 5, 0.92), rgba(1, 5, 5, 0.72));
-  padding: 16px 0 0;
+  padding: 14px 0 0;
 }
 
 .sonicPlaylistBlock__kicker,
@@ -179,11 +189,17 @@ input {
   overflow: visible;
 }
 
+.sonicPlaylistBlock__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .sonicPlaylistBlock__rail {
   display: flex;
   gap: 12px;
   overflow-x: auto;
-  padding: 0 20px 4px;
+  padding: 0 0 4px;
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -198,7 +214,7 @@ input {
   border: 0;
   color: inherit;
   cursor: pointer;
-  flex: 0 0 210px;
+  flex: 0 0 var(--sonic-thumb-width);
   padding: 0;
   scroll-snap-align: start;
   text-align: left;
@@ -255,6 +271,12 @@ input {
   padding-top: 10px;
 }
 
+.sonicPlaylistBlock__cardTitle,
+.sonicPlaylistBlock__notes,
+.sonicPlaylistBlock__details {
+  display: block;
+}
+
 .sonicPlaylistBlock__cardTitle {
   color: #f9f9f9;
   display: -webkit-box;
@@ -268,12 +290,33 @@ input {
   line-clamp: 2;
 }
 
-.sonicPlaylistBlock__duration {
+.sonicPlaylistBlock__notes {
+  color: rgba(249, 249, 249, 0.58);
+  display: -webkit-box;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-top: 5px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.sonicPlaylistBlock__details {
   color: rgba(249, 249, 249, 0.48);
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
   font-size: 12px;
   font-weight: 800;
   margin-top: 6px;
+}
+
+.sonicPlaylistBlock__details span:not(:last-child)::after {
+  color: rgba(249, 249, 249, 0.3);
+  content: "•";
+  margin-left: 8px;
 }
 
 .sonicPlaylist-swiper-prev,
@@ -308,12 +351,14 @@ input {
 }
 
 @media (min-width: 64rem) {
-  .sonicPlaylistBlock__inner {
-    padding: 46px 0 56px;
+  .sonicPlaylistBlock {
+    --sonic-thumb-width: 220px;
   }
 
-  .sonicPlaylistBlock__header {
-    padding: 0 50px 24px;
+  .sonicPlaylistBlock__inner {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+    min-height: calc((var(--sonic-player-width) * 9 / 16) + 122px);
+    padding: 30px 0;
   }
 
   .sonicPlaylistBlock__title {
@@ -321,22 +366,18 @@ input {
   }
 
   .sonicPlaylistBlock__layout {
-    align-items: start;
-    grid-template-columns: minmax(0, 42%) minmax(0, 58%);
+    align-items: stretch;
+    grid-template-columns: var(--sonic-player-width) minmax(0, 1fr);
+    min-height: calc(var(--sonic-player-width) * 9 / 16);
   }
 
-  .sonicPlaylistBlock__player {
-    padding-left: 50px;
-    padding-right: 0;
+  .sonicPlaylistBlock__content {
+    justify-content: space-between;
+    min-height: 100%;
   }
 
   .sonicPlaylistBlock__rail {
-    padding-left: 24px;
-    padding-right: 50px;
-  }
-
-  .sonicPlaylistBlock__card {
-    flex-basis: 230px;
+    align-items: flex-start;
   }
 
   .sonicPlaylist-swiper-prev,
@@ -346,34 +387,17 @@ input {
 }
 
 @media (min-width: 85.375rem) {
-  .sonicPlaylistBlock__layout {
-    grid-template-columns: minmax(0, 32%) minmax(0, 68%);
+  .sonicPlaylistBlock {
+    --sonic-thumb-width: 245px;
   }
 
-  .sonicPlaylistBlock__card {
-    flex-basis: 260px;
+  .sonicPlaylistBlock__title {
+    font-size: 42px;
   }
 }
 
 @media (min-width: 120rem) {
-  .sonicPlaylistBlock__header {
-    padding-left: 60px;
-    padding-right: 60px;
-  }
-
-  .sonicPlaylistBlock__layout {
-    grid-template-columns: minmax(0, 24%) minmax(0, 76%);
-  }
-
-  .sonicPlaylistBlock__player {
-    padding-left: 60px;
-  }
-
-  .sonicPlaylistBlock__rail {
-    padding-right: 60px;
-  }
-
-  .sonicPlaylistBlock__card {
-    flex-basis: 300px;
+  .sonicPlaylistBlock {
+    --sonic-thumb-width: 280px;
   }
 }
