@@ -182,7 +182,14 @@ export default function HomepageCarouselEditor() {
         body: formData
       });
 
-      const data = (await response.json()) as { imageUrl?: string; error?: string };
+      const data = (await response.json()) as {
+        imageUrl?: string;
+        error?: string;
+        outputType?: string;
+        width?: number;
+        height?: number;
+        sizeBytes?: number;
+      };
 
       if (!response.ok || !data.imageUrl) {
         throw new Error(data.error || "Upload non riuscito.");
@@ -191,7 +198,9 @@ export default function HomepageCarouselEditor() {
       updateSlide(index, {
         imageUrl: data.imageUrl
       });
-      setMessage("Immagine caricata. Premi Salva per pubblicare la slide.");
+      setMessage(
+        `Immagine convertita in WEBP ${data.width ?? 1920}x${data.height ?? 1080}. Premi Salva per pubblicare la slide.`
+      );
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Upload non riuscito.");
@@ -300,6 +309,9 @@ export default function HomepageCarouselEditor() {
                     className="sr-only"
                   />
                 </label>
+                <p className="text-xs leading-5 text-white/45">
+                  Conversione automatica: WEBP 1920x1080, formato 16:9.
+                </p>
               </div>
 
               <div className="space-y-3">

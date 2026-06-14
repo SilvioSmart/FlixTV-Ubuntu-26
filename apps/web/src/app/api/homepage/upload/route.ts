@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest } from "next/server";
+import sharp from "sharp";
 import { corsJson, corsOptions } from "@/lib/cors";
 
 export const runtime = "nodejs";
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 const ADMIN_COOKIE_NAME = "flixtv_admin_auth";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const CAROUSEL_WIDTH = 1920;
+const CAROUSEL_HEIGHT = 1080;
+const WEBP_QUALITY = 82;
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "homepage");
 const PUBLIC_UPLOAD_PATH = "/uploads/homepage";
 const ALLOWED_IMAGE_TYPES = new Map([
@@ -68,9 +72,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const extension = ALLOWED_IMAGE_TYPES.get(file.type);
+  const sourceExtension = ALLOWED_IMAGE_TYPES.get(file.type);
 
-  if (!extension) {
+  if (!sourceExtension) {
     return corsJson(
       request,
       {
@@ -94,18 +98,55 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const fileBytes = Buffer.from(await file.arrayBuffer());
+  const sourceBytes = Buffer.from(await file.arrayBuffer());
   const baseName = cleanFileName(file.name) || "homepage-slide";
-  const storedFileName = `${Date.now()}-${baseName}.${extension}`;
+  const storedFileName = `${Date.now()}-${baseName}.webp`;
   const filePath = path.join(UPLOAD_DIR, storedFileName);
+
+  let convertedImage: Buffer;
+
+  try {
+    convertedImage = await sharp(sourceBytes, {
+      animated: false,
+      limitInputPixels: 32_000_000
+    })
+      .rotate()
+      .resize(CAROUSEL_WIDTH, CAROUSEL_HEIGHT, {
+        fit: "cover",
+        position: "attention",
+        withoutEnlargement: false
+      })
+      .webp({
+        quality: WEBP_QUALITY,
+        effort: 5,
+        smartSubsample: true
+      })
+      .toBuffer();
+  } catch {
+    return corsJson(
+      request,
+      {
+        error: "Image conversion failed"
+      },
+      {
+        status: 422
+      }
+    );
+  }
 
   await mkdir(UPLOAD_DIR, {
     recursive: true
   });
-  await writeFile(filePath, fileBytes);
+  await writeFile(filePath, convertedImage);
 
   return corsJson(request, {
     imageUrl: `${PUBLIC_UPLOAD_PATH}/${storedFileName}`,
-    fileName: storedFileName
+    fileName: storedFileName,
+    originalFileName: file.name,
+    originalType: file.type,
+    outputType: "image/webp",
+    width: CAROUSEL_WIDTH,
+    height: CAROUSEL_HEIGHT,
+    sizeBytes: convertedImage.byteLength
   });
 }
