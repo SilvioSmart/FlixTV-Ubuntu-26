@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  NETWORK_OPTIONS,
-  type NetworkId,
-  type NetworkOption
-} from "@/components/ChannelSwitcher";
 import EpgGrid, { type EpgProgram } from "@/components/EpgGrid";
 import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
 import HomeMenu from "@/components/HomeMenu";
@@ -29,28 +24,34 @@ type EpgResponse = {
   programs?: EpgProgram[];
 };
 
-const FALLBACK_CHANNELS: Record<NetworkId, LiveChannel> = {
-  nove: {
-    id: "fallback-nove",
-    name: "Nove",
+type ChannelId = "flixtv";
+
+type ChannelTheme = {
+  id: ChannelId;
+  label: string;
+  description: string;
+  themeColor: string;
+  accentColor: string;
+};
+
+const FLIXTV_CHANNEL: ChannelTheme = {
+  id: "flixtv",
+  label: "FlixTV",
+  description: "Live, sitcom, news, show e contenuti on demand.",
+  themeColor: "#e50914",
+  accentColor: "#ff6b6b"
+};
+
+const FALLBACK_CHANNELS: Record<ChannelId, LiveChannel> = {
+  flixtv: {
+    id: "fallback-flixtv",
+    name: "FlixTV",
     logoUrl: "https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=320&q=80",
-    streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-  },
-  "real-time": {
-    id: "fallback-real-time",
-    name: "Real Time",
-    logoUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=320&q=80",
-    streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-  },
-  dmax: {
-    id: "fallback-dmax",
-    name: "DMAX",
-    logoUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=320&q=80",
     streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
   }
 };
 
-const DEFAULT_FALLBACK_CHANNEL = FALLBACK_CHANNELS.nove;
+const DEFAULT_FALLBACK_CHANNEL = FALLBACK_CHANNELS.flixtv;
 const EMPTY_EPG: EpgProgram[] = [];
 
 const HERO_SLIDES: HeroSlide[] = [
@@ -220,15 +221,6 @@ const CATEGORY_ITEMS: VodItem[] = [
   }
 ];
 
-function matchesNetwork(channel: LiveChannel, networkId: NetworkId) {
-  const normalizedName = channel.name.toLowerCase().replaceAll(" ", "-");
-  return normalizedName.includes(networkId);
-}
-
-function getFallbackChannel(networkId: NetworkId): LiveChannel {
-  return FALLBACK_CHANNELS[networkId] ?? DEFAULT_FALLBACK_CHANNEL;
-}
-
 function getFallbackEpg(channelId: string): EpgProgram[] {
   const now = new Date();
   const startOfCurrentProgram = new Date(now);
@@ -247,7 +239,7 @@ function getFallbackEpg(channelId: string): EpgProgram[] {
       id: `${channelId}-now`,
       channelId,
       title: "In onda adesso",
-      description: "Il programma live corrente del network selezionato.",
+      description: "Il programma live corrente di FlixTV.",
       startTime: startOfCurrentProgram,
       endTime: endOfCurrentProgram
     },
@@ -271,32 +263,20 @@ function getFallbackEpg(channelId: string): EpgProgram[] {
 }
 
 export default function HomePage() {
-  const [activeNetwork, setActiveNetwork] = useState<NetworkOption>(NETWORK_OPTIONS[0] as NetworkOption);
   const [channels, setChannels] = useState<LiveChannel[]>([]);
   const [epgPrograms, setEpgPrograms] = useState<EpgProgram[]>(EMPTY_EPG);
   const [isChannelsLoading, setIsChannelsLoading] = useState(true);
   const [isEpgLoading, setIsEpgLoading] = useState(false);
 
   const activeChannel = useMemo(() => {
-    return (
-      channels.find((channel) => matchesNetwork(channel, activeNetwork.id)) ??
-      getFallbackChannel(activeNetwork.id)
-    );
-  }, [activeNetwork.id, channels]);
-
-  const filteredMostWatched = useMemo(() => {
-    return VOD_ITEMS.filter((item) => item.category.toLowerCase().replaceAll(" ", "-") === activeNetwork.id);
-  }, [activeNetwork.id]);
-
-  const filteredRecentEpisodes = useMemo(() => {
-    return RECENT_EPISODES.filter((item) => item.category.toLowerCase().replaceAll(" ", "-") === activeNetwork.id);
-  }, [activeNetwork.id]);
+    return channels[0] ?? DEFAULT_FALLBACK_CHANNEL;
+  }, [channels]);
 
   useEffect(() => {
-    document.documentElement.dataset.streamNetwork = activeNetwork.id;
-    document.documentElement.style.setProperty("--stream-theme", activeNetwork.themeColor);
-    document.documentElement.style.setProperty("--stream-accent", activeNetwork.accentColor);
-  }, [activeNetwork]);
+    document.documentElement.dataset.streamChannel = FLIXTV_CHANNEL.id;
+    document.documentElement.style.setProperty("--stream-theme", FLIXTV_CHANNEL.themeColor);
+    document.documentElement.style.setProperty("--stream-accent", FLIXTV_CHANNEL.accentColor);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -397,7 +377,7 @@ export default function HomePage() {
                 className="rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-black"
                 style={{ backgroundColor: "var(--stream-accent, #ff6b6b)" }}
               >
-                {isChannelsLoading ? "Loading" : activeNetwork.label}
+                {isChannelsLoading ? "Loading" : FLIXTV_CHANNEL.label}
               </div>
             </div>
 
@@ -410,7 +390,7 @@ export default function HomePage() {
               vastTagUrl={buildVastTagUrl({
                 placement: "live",
                 channelId: activeChannel.id,
-                network: activeNetwork.id
+                channel: FLIXTV_CHANNEL.id
               })}
               muted
               className="aspect-video"
@@ -425,8 +405,8 @@ export default function HomePage() {
                 className="h-14 w-14 rounded-md object-cover"
               />
               <div className="min-w-0">
-                <div className="truncate text-lg font-black text-white">{activeNetwork.label}</div>
-                <div className="text-sm text-white/50">{activeNetwork.description}</div>
+                <div className="truncate text-lg font-black text-white">{FLIXTV_CHANNEL.label}</div>
+                <div className="text-sm text-white/50">{FLIXTV_CHANNEL.description}</div>
               </div>
             </div>
             <div className="space-y-3 text-sm leading-6 text-white/60">
@@ -457,7 +437,7 @@ export default function HomePage() {
             id="sitcom"
             className="scroll-mt-32"
             title="Sitcom"
-            items={filteredMostWatched.length > 0 ? filteredMostWatched : VOD_ITEMS}
+            items={VOD_ITEMS}
           />
           <VodCarousel
             id="fuori-corso"
@@ -481,7 +461,7 @@ export default function HomePage() {
             id="telegaribaldi"
             className="scroll-mt-32"
             title="Telegaribaldi"
-            items={filteredRecentEpisodes.length > 0 ? filteredRecentEpisodes : RECENT_EPISODES}
+            items={RECENT_EPISODES}
           />
           <VodCarousel
             id="show"
