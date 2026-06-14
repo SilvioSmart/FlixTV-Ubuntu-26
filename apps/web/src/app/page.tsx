@@ -9,10 +9,19 @@ import {
   normalizeHomeConfig,
   type HomeConfig
 } from "@/lib/home-config";
+import {
+  getDefaultHomepageSlides,
+  toHeroSlide,
+  type HomepageSlideRecord
+} from "@/lib/homepage-slides";
 import { buildBackendUrl } from "@/lib/platform-config";
 
 type HomeConfigResponse = {
   config?: HomeConfig;
+};
+
+type HomepageSlidesResponse = {
+  slides?: HomepageSlideRecord[];
 };
 
 const FLIXTV_THEME = {
@@ -38,17 +47,47 @@ export default function HomePage() {
       setIsConfigLoading(true);
 
       try {
-        const response = await fetch(buildBackendUrl("/api/home-config"), {
-          credentials: "include",
-          signal: controller.signal
-        });
+        const [homeConfigResponse, homepageSlidesResponse] = await Promise.all([
+          fetch(buildBackendUrl("/api/home-config"), {
+            credentials: "include",
+            signal: controller.signal
+          }),
+          fetch(buildBackendUrl("/api/homepage"), {
+            credentials: "include",
+            signal: controller.signal
+          })
+        ]);
 
-        if (!response.ok) {
+        if (!homeConfigResponse.ok) {
           throw new Error("Unable to load home config");
         }
 
-        const data = (await response.json()) as HomeConfigResponse;
-        setHomeConfig(normalizeHomeConfig(data.config));
+        const homeConfigData = (await homeConfigResponse.json()) as HomeConfigResponse;
+        const nextHomeConfig = normalizeHomeConfig(homeConfigData.config);
+
+        if (homepageSlidesResponse.ok) {
+          const homepageSlidesData =
+            (await homepageSlidesResponse.json()) as HomepageSlidesResponse;
+          const slides =
+            homepageSlidesData.slides && homepageSlidesData.slides.length > 0
+              ? homepageSlidesData.slides.map(toHeroSlide)
+              : getDefaultHomepageSlides().map(toHeroSlide);
+
+          setHomeConfig({
+            ...nextHomeConfig,
+            head: {
+              ...nextHomeConfig.head,
+              autoplayMs: Math.max(
+                3000,
+                slides[0]?.imageEffectMs ?? nextHomeConfig.head.autoplayMs
+              ),
+              slides
+            }
+          });
+          return;
+        }
+
+        setHomeConfig(nextHomeConfig);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;

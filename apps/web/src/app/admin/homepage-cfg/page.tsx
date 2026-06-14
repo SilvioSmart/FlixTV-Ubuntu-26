@@ -1,5 +1,5 @@
 import AdminShell from "@/components/admin/AdminShell";
-import HomeConfigEditor from "@/components/admin/HomeConfigEditor";
+import HomepageCarouselEditor from "@/components/admin/HomepageCarouselEditor";
 
 export default function HomepageConfigPage() {
   return (
@@ -7,7 +7,7 @@ export default function HomepageConfigPage() {
       title="homepage-cfg"
       description="Carica e seleziona le slide del carousel, configura timing testo/immagine e abbina alle immagini i campi testuali."
     >
-      <HomeConfigEditor />
+      <HomepageCarouselEditor />
     </AdminShell>
   );
 }

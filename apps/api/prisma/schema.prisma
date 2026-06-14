@@ -71,6 +71,25 @@ model MenuItem {
   @@map("menu")
 }
 
+model HomepageSlide {
+  id              String   @id @default(cuid())
+  title           String
+  subtitle        String?
+  notes           String?  @db.Text
+  imageUrl        String
+  linkUrl         String?
+  linkLabel       String?
+  imageEffectMs   Int      @default(6000)
+  textEffectMs    Int      @default(1500)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("homepage")
+}
+
 model LiveChannel {
   id        String            @id @default(cuid())
   name      String
