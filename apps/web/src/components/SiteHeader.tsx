@@ -1,15 +1,50 @@
 "use client";
 
-import { Search, Tv } from "lucide-react";
+import { ChevronDown, Search, Tv } from "lucide-react";
 
 const MAIN_NAV_ITEMS = [
-  "sitcom",
-  "telegaribaldi",
-  "show",
-  "morning",
-  "rubriche",
-  "news",
-  "web-live"
+  {
+    label: "sitcom",
+    href: "#sitcom",
+    submenu: [
+      {
+        label: "Fuori Corso",
+        href: "#fuori-corso"
+      },
+      {
+        label: "Bed&Breakfast",
+        href: "#bed-and-breakfast"
+      },
+      {
+        label: "Tutti a Casa",
+        href: "#tutti-a-casa"
+      }
+    ]
+  },
+  {
+    label: "telegaribaldi",
+    href: "#telegaribaldi"
+  },
+  {
+    label: "show",
+    href: "#show"
+  },
+  {
+    label: "morning",
+    href: "#morning"
+  },
+  {
+    label: "rubriche",
+    href: "#rubriche"
+  },
+  {
+    label: "news",
+    href: "#news"
+  },
+  {
+    label: "web-live",
+    href: "#web-live"
+  }
 ];
 
 export default function SiteHeader() {
@@ -30,13 +65,31 @@ export default function SiteHeader() {
           className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex"
         >
           {MAIN_NAV_ITEMS.map((item) => (
-            <a
-              key={item}
-              href={`#${item}`}
-              className="text-sm font-bold uppercase tracking-[0.12em] text-white/70 transition hover:text-white"
-            >
-              {item}
-            </a>
+            <div key={item.label} className="group relative">
+              <a
+                href={item.href}
+                className="inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-[0.12em] text-white/70 transition hover:text-white"
+              >
+                {item.label}
+                {item.submenu ? <ChevronDown size={14} /> : null}
+              </a>
+
+              {item.submenu ? (
+                <div className="absolute left-0 top-full z-overlay hidden min-w-[260px] pt-5 group-hover:block group-focus-within:block">
+                  <div className="rounded-md border border-white/10 bg-black/95 p-2 shadow-rail backdrop-blur-xl">
+                    {item.submenu.map((submenuItem) => (
+                      <a
+                        key={submenuItem.href}
+                        href={submenuItem.href}
+                        className="block rounded-md px-3 py-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white/65 transition hover:bg-white/[0.08] hover:text-white"
+                      >
+                        {submenuItem.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ))}
         </nav>
 

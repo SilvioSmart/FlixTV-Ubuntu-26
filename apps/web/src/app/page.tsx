@@ -134,6 +134,63 @@ const VOD_ITEMS: VodItem[] = [
   }
 ];
 
+const SITCOM_FUORI_CORSO_ITEMS: VodItem[] = [
+  {
+    id: "fuori-corso-1",
+    title: "Fuori Corso: matricole allo sbando",
+    description: "Coinquilini, esami impossibili e una vita universitaria sempre fuori programma.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=900&q=80",
+    category: "Fuori Corso",
+    duration: "26m"
+  },
+  {
+    id: "fuori-corso-2",
+    title: "Fuori Corso: appello finale",
+    description: "La sessione si avvicina e ogni scusa diventa una strategia di sopravvivenza.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1517486808906-6ca8b3f8e1c1?auto=format&fit=crop&w=900&q=80",
+    category: "Fuori Corso",
+    duration: "24m"
+  }
+];
+
+const SITCOM_BED_AND_BREAKFAST_ITEMS: VodItem[] = [
+  {
+    id: "bed-breakfast-1",
+    title: "Bed&Breakfast: stanza con imprevisto",
+    description: "Ospiti difficili, prenotazioni doppie e una reception che non dorme mai.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80",
+    category: "Bed&Breakfast",
+    duration: "28m"
+  },
+  {
+    id: "bed-breakfast-2",
+    title: "Bed&Breakfast: colazione agitata",
+    description: "Una mattina qualunque diventa una catena di equivoci tutta da ridere.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1495365200479-c4ed1d35e1aa?auto=format&fit=crop&w=900&q=80",
+    category: "Bed&Breakfast",
+    duration: "25m"
+  }
+];
+
+const SITCOM_TUTTI_A_CASA_ITEMS: VodItem[] = [
+  {
+    id: "tutti-casa-1",
+    title: "Tutti a Casa: parenti in arrivo",
+    description: "Una famiglia rumorosa, una casa troppo piccola e nessuna via di fuga.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80",
+    category: "Tutti a Casa",
+    duration: "27m"
+  },
+  {
+    id: "tutti-casa-2",
+    title: "Tutti a Casa: cena di pace",
+    description: "Quando tutti promettono calma, la serata diventa subito memorabile.",
+    thumbnailUrl: "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=900&q=80",
+    category: "Tutti a Casa",
+    duration: "23m"
+  }
+];
+
 const RECENT_EPISODES = [...VOD_ITEMS].reverse();
 
 const CATEGORY_ITEMS: VodItem[] = [
@@ -401,6 +458,24 @@ export default function HomePage() {
             className="scroll-mt-32"
             title="Sitcom"
             items={filteredMostWatched.length > 0 ? filteredMostWatched : VOD_ITEMS}
+          />
+          <VodCarousel
+            id="fuori-corso"
+            className="scroll-mt-32"
+            title="Fuori Corso"
+            items={SITCOM_FUORI_CORSO_ITEMS}
+          />
+          <VodCarousel
+            id="bed-and-breakfast"
+            className="scroll-mt-32"
+            title="Bed&Breakfast"
+            items={SITCOM_BED_AND_BREAKFAST_ITEMS}
+          />
+          <VodCarousel
+            id="tutti-a-casa"
+            className="scroll-mt-32"
+            title="Tutti a Casa"
+            items={SITCOM_TUTTI_A_CASA_ITEMS}
           />
           <VodCarousel
             id="telegaribaldi"
