@@ -138,6 +138,22 @@ model MediaFieldOption {
   @@map("media_field_options")
 }
 
+model ProgramDetail {
+  id           String   @id @default(cuid())
+  categoria    String
+  programma    String
+  serie        String
+  stagione     String
+  numeroPuntate Int     @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([categoria])
+  @@index([programma])
+  @@index([serie])
+  @@map("programmi")
+}
+
 model LiveChannel {
   id        String            @id @default(cuid())
   name      String

@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Database,
   FileVideo,
   FolderCog,
   Loader2,
   Plus,
+  RotateCcw,
   Save,
   Settings,
   Trash2,
@@ -16,12 +16,15 @@ import AdminCard from "@/components/admin/AdminCard";
 import AdminShell from "@/components/admin/AdminShell";
 import {
   DEFAULT_MEDIA_CONFIG,
-  getOptionsForField,
-  MEDIA_FIELD_NAMES,
   normalizeMediaConfig,
-  type MediaConfig,
-  type MediaFieldOption
+  type MediaConfig
 } from "@/lib/media-config";
+import {
+  DEFAULT_PROGRAMS,
+  normalizeProgram,
+  uniqueValues,
+  type ProgramDetail
+} from "@/lib/programs-config";
 import { buildBackendUrl } from "@/lib/platform-config";
 
 type ActiveSection = "media" | "convert" | "config";
@@ -32,104 +35,96 @@ type MediaConfigResponse = {
   error?: string;
 };
 
+type ProgramsResponse = {
+  programs?: ProgramDetail[];
+  program?: ProgramDetail;
+  error?: string;
+};
+
 const SECTION_BUTTONS: Array<{
   id: ActiveSection;
   label: string;
 }> = [
-  {
-    id: "media",
-    label: "MEDIA"
-  },
-  {
-    id: "convert",
-    label: "CONVERT"
-  },
-  {
-    id: "config",
-    label: "CONFIG"
-  }
+  { id: "media", label: "MEDIA" },
+  { id: "convert", label: "CONVERT" },
+  { id: "config", label: "CONFIG" }
 ];
 
 function createTempId() {
   return `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function createFieldOption(fieldName = "category"): MediaFieldOption {
+function createProgram(): ProgramDetail {
   return {
     id: createTempId(),
-    fieldName,
-    label: "Nuova voce",
-    value: `nuova-voce-${Date.now()}`,
-    sortOrder: 0,
-    isActive: true
+    categoria: "Nuova categoria",
+    programma: "Nuovo programma",
+    serie: "Nuova serie",
+    stagione: "Stagione 1",
+    numeroPuntate: 0
   };
 }
 
-function formatFieldName(fieldName: string) {
-  return (
-    MEDIA_FIELD_NAMES.find((field) => field.value === fieldName)?.label ?? fieldName
-  );
+function getProgramKey(program: ProgramDetail) {
+  return program.id ?? `${program.categoria}-${program.programma}-${program.serie}-${program.stagione}`;
 }
 
 export default function MediaLoadConversionPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("media");
   const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<MediaConfig>(DEFAULT_MEDIA_CONFIG);
+  const [programs, setPrograms] = useState<ProgramDetail[]>(DEFAULT_PROGRAMS);
+  const [draftPrograms, setDraftPrograms] = useState<Record<string, ProgramDetail>>({});
   const [status, setStatus] = useState<SaveStatus>("loading");
   const [message, setMessage] = useState("Caricamento configurazione media.");
-  const [isDirty, setIsDirty] = useState(false);
+  const [savingRowId, setSavingRowId] = useState<string | null>(null);
 
-  const groupedOptions = useMemo(() => {
-    return MEDIA_FIELD_NAMES.map((field) => ({
-      ...field,
-      options: config.fieldOptions
-        .filter((option) => option.fieldName === field.value)
-        .toSorted((firstOption, secondOption) => {
-          if (firstOption.sortOrder !== secondOption.sortOrder) {
-            return firstOption.sortOrder - secondOption.sortOrder;
-          }
-
-          return firstOption.label.localeCompare(secondOption.label);
-        })
-    }));
-  }, [config.fieldOptions]);
-
-  const categoryOptions = getOptionsForField(config, "category");
-  const seriesOptions = getOptionsForField(config, "series");
-  const episodeOptions = getOptionsForField(config, "episode");
-  const languageOptions = getOptionsForField(config, "language");
-  const ratingOptions = getOptionsForField(config, "rating");
+  const categoriaOptions = useMemo(() => uniqueValues(programs, "categoria"), [programs]);
+  const programmaOptions = useMemo(() => uniqueValues(programs, "programma"), [programs]);
+  const serieOptions = useMemo(() => uniqueValues(programs, "serie"), [programs]);
+  const stagioneOptions = useMemo(() => uniqueValues(programs, "stagione"), [programs]);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadConfig() {
+    async function loadData() {
       try {
-        const response = await fetch(buildBackendUrl("/api/media-config"), {
-          credentials: "include",
-          signal: controller.signal
-        });
+        const [configResponse, programsResponse] = await Promise.all([
+          fetch(buildBackendUrl("/api/media-config"), {
+            credentials: "include",
+            signal: controller.signal
+          }),
+          fetch(buildBackendUrl("/api/programs"), {
+            credentials: "include",
+            signal: controller.signal
+          })
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Configurazione media non disponibile.");
+        if (configResponse.ok) {
+          const configData = (await configResponse.json()) as MediaConfigResponse;
+          setConfig(normalizeMediaConfig(configData.config));
         }
 
-        const data = (await response.json()) as MediaConfigResponse;
-        setConfig(normalizeMediaConfig(data.config));
+        if (programsResponse.ok) {
+          const programsData = (await programsResponse.json()) as ProgramsResponse;
+          setPrograms(Array.isArray(programsData.programs) ? programsData.programs : DEFAULT_PROGRAMS);
+        }
+
         setStatus("idle");
-        setMessage("Configurazione caricata.");
+        setMessage("Configurazione media caricata.");
       } catch (error) {
         if ((error as Error).name === "AbortError") {
           return;
         }
 
         setConfig(DEFAULT_MEDIA_CONFIG);
+        setPrograms(DEFAULT_PROGRAMS);
         setStatus("error");
         setMessage("Uso la configurazione media predefinita.");
       }
     }
 
-    void loadConfig();
+    void loadData();
 
     return () => controller.abort();
   }, []);
@@ -148,59 +143,163 @@ export default function MediaLoadConversionPage() {
     }, 260);
   }
 
-  function markDirty(nextConfig: MediaConfig) {
-    setConfig(nextConfig);
-    setIsDirty(true);
+  function updateStorage(patch: Partial<MediaConfig["storage"]>) {
+    setConfig((currentConfig) => ({
+      ...currentConfig,
+      storage: {
+        ...currentConfig.storage,
+        ...patch
+      }
+    }));
+    setMessage("Modifiche in bozza: premi Salva in CONFIG.");
+  }
 
-    if (status !== "saving") {
-      setStatus("idle");
-      setMessage("Modifiche in bozza: premi Salva in CONFIG.");
+  function updateProgramDraft(rowKey: string, patch: Partial<ProgramDetail>) {
+    const sourceProgram =
+      draftPrograms[rowKey] ?? programs.find((program) => getProgramKey(program) === rowKey);
+
+    if (!sourceProgram) {
+      return;
+    }
+
+    setDraftPrograms((currentDrafts) => ({
+      ...currentDrafts,
+      [rowKey]: {
+        ...sourceProgram,
+        ...patch
+      }
+    }));
+  }
+
+  function addProgram() {
+    const program = createProgram();
+    setPrograms((currentPrograms) => [...currentPrograms, program]);
+    setDraftPrograms((currentDrafts) => ({
+      ...currentDrafts,
+      [getProgramKey(program)]: program
+    }));
+  }
+
+  function cancelProgram(rowKey: string) {
+    const program = programs.find((currentProgram) => getProgramKey(currentProgram) === rowKey);
+
+    if (program?.id?.startsWith("temp-")) {
+      setPrograms((currentPrograms) =>
+        currentPrograms.filter((currentProgram) => getProgramKey(currentProgram) !== rowKey)
+      );
+    }
+
+    setDraftPrograms((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts };
+      delete nextDrafts[rowKey];
+      return nextDrafts;
+    });
+  }
+
+  async function saveProgram(rowKey: string) {
+    const program = draftPrograms[rowKey] ?? programs.find((item) => getProgramKey(item) === rowKey);
+    const normalizedProgram = normalizeProgram(program);
+
+    if (!normalizedProgram || !program) {
+      setStatus("error");
+      setMessage("Compila categoria, programma, serie e stagione.");
+      return;
+    }
+
+    const isNew = !program.id || program.id.startsWith("temp-") || program.id.startsWith("default-");
+    setSavingRowId(rowKey);
+    setStatus("saving");
+    setMessage("Salvataggio programma in corso.");
+
+    try {
+      const response = await fetch(buildBackendUrl("/api/programs"), {
+        method: isNew ? "POST" : "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...normalizedProgram,
+          id: isNew ? undefined : program.id
+        })
+      });
+      const data = (await response.json()) as ProgramsResponse;
+
+      if (!response.ok || !data.program) {
+        throw new Error(data.error || "Salvataggio programma non riuscito.");
+      }
+
+      setPrograms((currentPrograms) =>
+        currentPrograms.map((currentProgram) =>
+          getProgramKey(currentProgram) === rowKey ? data.program as ProgramDetail : currentProgram
+        )
+      );
+      setDraftPrograms((currentDrafts) => {
+        const nextDrafts = { ...currentDrafts };
+        delete nextDrafts[rowKey];
+        return nextDrafts;
+      });
+      setStatus("saved");
+      setMessage("Programma salvato.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Salvataggio programma non riuscito.");
+    } finally {
+      setSavingRowId(null);
     }
   }
 
-  function updateStorage(patch: Partial<MediaConfig["storage"]>) {
-    markDirty({
-      ...config,
-      storage: {
-        ...config.storage,
-        ...patch
+  async function deleteProgram(rowKey: string) {
+    const program = programs.find((item) => getProgramKey(item) === rowKey);
+
+    if (!program) {
+      return;
+    }
+
+    if (!program.id || program.id.startsWith("temp-") || program.id.startsWith("default-")) {
+      setPrograms((currentPrograms) =>
+        currentPrograms.filter((currentProgram) => getProgramKey(currentProgram) !== rowKey)
+      );
+      cancelProgram(rowKey);
+      return;
+    }
+
+    setSavingRowId(rowKey);
+
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/programs?id=${encodeURIComponent(program.id)}`),
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Cancellazione programma non riuscita.");
       }
-    });
+
+      setPrograms((currentPrograms) =>
+        currentPrograms.filter((currentProgram) => getProgramKey(currentProgram) !== rowKey)
+      );
+      setDraftPrograms((currentDrafts) => {
+        const nextDrafts = { ...currentDrafts };
+        delete nextDrafts[rowKey];
+        return nextDrafts;
+      });
+      setStatus("saved");
+      setMessage("Programma cancellato.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Cancellazione programma non riuscita.");
+    } finally {
+      setSavingRowId(null);
+    }
   }
 
-  function updateOption(id: string | undefined, patch: Partial<MediaFieldOption>) {
-    markDirty({
-      ...config,
-      fieldOptions: config.fieldOptions.map((option) =>
-        option.id === id
-          ? {
-              ...option,
-              ...patch
-            }
-          : option
-      )
-    });
-  }
-
-  function deleteOption(id: string | undefined) {
-    markDirty({
-      ...config,
-      fieldOptions: config.fieldOptions.filter((option) => option.id !== id)
-    });
-  }
-
-  function addOption(fieldName: string) {
-    markDirty({
-      ...config,
-      fieldOptions: [...config.fieldOptions, createFieldOption(fieldName)]
-    });
-  }
-
-  async function saveConfig() {
+  async function saveStorageConfig() {
     setStatus("saving");
-    setMessage("Salvataggio configurazione media in corso.");
-
-    const normalizedConfig = normalizeMediaConfig(config);
+    setMessage("Salvataggio configurazione cartelle in corso.");
 
     try {
       const response = await fetch(buildBackendUrl("/api/media-config"), {
@@ -210,30 +309,28 @@ export default function MediaLoadConversionPage() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          config: normalizedConfig
+          config: normalizeMediaConfig(config)
         })
       });
-
       const data = (await response.json()) as MediaConfigResponse;
 
       if (!response.ok || !data.config) {
-        throw new Error(data.error || "Salvataggio non riuscito.");
+        throw new Error(data.error || "Salvataggio configurazione non riuscito.");
       }
 
       setConfig(normalizeMediaConfig(data.config));
       setStatus("saved");
-      setIsDirty(false);
-      setMessage("Configurazione media salvata.");
+      setMessage("Configurazione cartelle salvata.");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Salvataggio non riuscito.");
+      setMessage(error instanceof Error ? error.message : "Salvataggio configurazione non riuscito.");
     }
   }
 
   return (
     <AdminShell
       title="media load/conv"
-      description="Caricamento media, conversione HLS e configurazione cartelle/campi database."
+      description="Caricamento media, conversione HLS e configurazione cartelle/programmi."
     >
       <div className="mb-5 flex flex-wrap gap-2">
         {SECTION_BUTTONS.map((section) => {
@@ -264,12 +361,8 @@ export default function MediaLoadConversionPage() {
           >
             <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/20 bg-black/35 p-8 text-center transition hover:bg-white/[0.04]">
               <UploadCloud size={42} className="text-white/55" />
-              <span className="mt-4 text-lg font-black text-white">
-                Seleziona video sorgente
-              </span>
-              <span className="mt-2 text-sm text-white/55">
-                MP4, MOV, MXF o file mezzanine
-              </span>
+              <span className="mt-4 text-lg font-black text-white">Seleziona video sorgente</span>
+              <span className="mt-2 text-sm text-white/55">MP4, MOV, MXF o file mezzanine</span>
               <input type="file" accept="video/*" className="sr-only" />
             </label>
           </AdminCard>
@@ -277,84 +370,35 @@ export default function MediaLoadConversionPage() {
           <AdminCard title="Metadati contenuto">
             <div className="space-y-3">
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                  Titolo
-                </span>
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">Titolo</span>
                 <input className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none" />
               </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                  Categoria
-                </span>
-                <select className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none">
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                  Serie
-                </span>
-                <select className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none">
-                  {seriesOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                  Puntata
-                </span>
-                <select className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none">
-                  <option value="">Non assegnata</option>
-                  {episodeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block">
+              {[
+                ["Categoria", categoriaOptions],
+                ["Programma", programmaOptions],
+                ["Serie", serieOptions],
+                ["Stagione", stagioneOptions]
+              ].map(([label, options]) => (
+                <label key={label as string} className="block">
                   <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                    Lingua
+                    {label as string}
                   </span>
                   <select className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none">
-                    {languageOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                    {(options as string[]).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                    Rating
-                  </span>
-                  <select className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none">
-                    {ratingOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              ))}
             </div>
           </AdminCard>
         </div>
       ) : null}
 
       {activeSection === "convert" ? (
-        <AdminCard
-          title="Conversione HLS"
-          description={`Output HLS: ${config.storage.convertedPath}`}
-        >
+        <AdminCard title="Conversione HLS" description={`Output HLS: ${config.storage.convertedPath}`}>
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div>
               <div className="flex flex-wrap items-center gap-4">
@@ -404,11 +448,7 @@ export default function MediaLoadConversionPage() {
                   </span>
                   <input
                     value={config.storage.uploadPath}
-                    onChange={(event) =>
-                      updateStorage({
-                        uploadPath: event.currentTarget.value
-                      })
-                    }
+                    onChange={(event) => updateStorage({ uploadPath: event.currentTarget.value })}
                     className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
                   />
                 </label>
@@ -418,11 +458,7 @@ export default function MediaLoadConversionPage() {
                   </span>
                   <input
                     value={config.storage.convertedPath}
-                    onChange={(event) =>
-                      updateStorage({
-                        convertedPath: event.currentTarget.value
-                      })
-                    }
+                    onChange={(event) => updateStorage({ convertedPath: event.currentTarget.value })}
                     className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
                   />
                 </label>
@@ -432,11 +468,7 @@ export default function MediaLoadConversionPage() {
                   </span>
                   <input
                     value={config.storage.thumbnailPath}
-                    onChange={(event) =>
-                      updateStorage({
-                        thumbnailPath: event.currentTarget.value
-                      })
-                    }
+                    onChange={(event) => updateStorage({ thumbnailPath: event.currentTarget.value })}
                     className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
                   />
                 </label>
@@ -444,97 +476,100 @@ export default function MediaLoadConversionPage() {
             </AdminCard>
 
             <AdminCard
-              title="Campi media a tendina"
-              description="Gestisci le opzioni disponibili nei menu a tendina dei metadati media."
+              title="Programmi"
+              description="Dettagli dei programmi usati nei menu a tendina dei media."
             >
-              <div className="space-y-5">
-                {groupedOptions.map((field) => (
-                  <section key={field.value} className="rounded-md border border-white/10 bg-black/30 p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-black uppercase tracking-[0.14em] text-white">
-                          {field.label}
-                        </h3>
-                        <p className="mt-1 text-xs text-white/45">
-                          Campo database: {field.value}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addOption(field.value)}
-                        className="inline-flex h-9 items-center gap-2 rounded-md border border-white/10 px-3 text-xs font-black uppercase tracking-[0.1em] text-white/75 transition hover:bg-white/10 hover:text-white"
-                      >
-                        <Plus size={15} />
-                        Aggiungi
-                      </button>
-                    </div>
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={addProgram}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black"
+                >
+                  <Plus size={17} />
+                  Aggiungi programma
+                </button>
+              </div>
 
-                    <div className="space-y-2">
-                      {field.options.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-white/10 p-3 text-sm text-white/35">
-                          Nessuna voce configurata.
-                        </div>
-                      ) : null}
+              <div className="overflow-x-auto">
+                <table className="min-w-[980px] w-full border-separate border-spacing-y-2 text-left">
+                  <thead>
+                    <tr className="text-xs font-black uppercase tracking-[0.12em] text-white/40">
+                      <th className="px-3 py-2">Categoria</th>
+                      <th className="px-3 py-2">Programma</th>
+                      <th className="px-3 py-2">Serie</th>
+                      <th className="px-3 py-2">Stagione</th>
+                      <th className="px-3 py-2">Numero puntate</th>
+                      <th className="px-3 py-2 text-right">Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {programs.map((program) => {
+                      const rowKey = getProgramKey(program);
+                      const draft = draftPrograms[rowKey] ?? program;
+                      const isSaving = savingRowId === rowKey;
 
-                      {field.options.map((option) => (
-                        <div
-                          key={option.id ?? `${option.fieldName}-${option.value}`}
-                          className="grid gap-2 rounded-md border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_44px]"
-                        >
-                          <label className="block">
-                            <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
-                              Nome visibile
-                            </span>
+                      return (
+                        <tr key={rowKey} className="bg-black/35">
+                          {(["categoria", "programma", "serie", "stagione"] as const).map((field) => (
+                            <td key={field} className="px-3 py-2">
+                              <input
+                                value={draft[field]}
+                                onChange={(event) =>
+                                  updateProgramDraft(rowKey, {
+                                    [field]: event.currentTarget.value
+                                  })
+                                }
+                                className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
+                              />
+                            </td>
+                          ))}
+                          <td className="px-3 py-2">
                             <input
-                              value={option.label}
+                              type="number"
+                              min={0}
+                              value={draft.numeroPuntate}
                               onChange={(event) =>
-                                updateOption(option.id, {
-                                  label: event.currentTarget.value
+                                updateProgramDraft(rowKey, {
+                                  numeroPuntate: Number(event.currentTarget.value)
                                 })
                               }
                               className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
                             />
-                          </label>
-                          <label className="block">
-                            <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
-                              Valore database
-                            </span>
-                            <input
-                              value={option.value}
-                              onChange={(event) =>
-                                updateOption(option.id, {
-                                  value: event.currentTarget.value
-                                })
-                              }
-                              className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
-                            />
-                          </label>
-                          <label className="flex h-full items-end gap-2 pb-2 text-sm font-bold text-white/65">
-                            <input
-                              type="checkbox"
-                              checked={option.isActive}
-                              onChange={(event) =>
-                                updateOption(option.id, {
-                                  isActive: event.currentTarget.checked
-                                })
-                              }
-                              className="h-4 w-4 accent-white"
-                            />
-                            Attiva
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => deleteOption(option.id)}
-                            aria-label={`Cancella ${option.label}`}
-                            className="mt-5 grid h-10 w-10 place-items-center rounded-md text-white/55 transition hover:bg-red-500/15 hover:text-red-200"
-                          >
-                            <Trash2 size={17} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => deleteProgram(rowKey)}
+                                className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-xs font-black uppercase tracking-[0.1em] text-red-100 transition hover:bg-red-500/15"
+                              >
+                                <Trash2 size={15} />
+                                Delete
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cancelProgram(rowKey)}
+                                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/10 px-3 text-xs font-black uppercase tracking-[0.1em] text-white/70 transition hover:bg-white/10"
+                              >
+                                <RotateCcw size={15} />
+                                Annulla
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveProgram(rowKey)}
+                                disabled={isSaving}
+                                className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-3 text-xs font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90 disabled:opacity-40"
+                              >
+                                {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                                Save
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </AdminCard>
           </div>
@@ -551,28 +586,16 @@ export default function MediaLoadConversionPage() {
               </div>
               <p className="mt-3 text-sm leading-6 text-white/65">{message}</p>
               <p className="mt-3 text-sm leading-6 text-white/45">
-                Opzioni configurate: {config.fieldOptions.length}
+                Programmi configurati: {programs.length}
               </p>
               <button
                 type="button"
-                onClick={saveConfig}
-                disabled={!isDirty || status === "saving"}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/30"
+                onClick={saveStorageConfig}
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90"
               >
-                {status === "saving" ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                Salva
+                <Save size={18} />
+                Salva cartelle
               </button>
-            </AdminCard>
-
-            <AdminCard title="Campi gestiti">
-              <div className="space-y-2 text-sm leading-6 text-white/65">
-                {MEDIA_FIELD_NAMES.map((field) => (
-                  <p key={field.value}>
-                    <Database size={14} className="mr-2 inline" />
-                    {formatFieldName(field.value)}
-                  </p>
-                ))}
-              </div>
             </AdminCard>
           </aside>
         </div>
