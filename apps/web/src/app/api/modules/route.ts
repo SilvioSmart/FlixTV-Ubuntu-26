@@ -31,6 +31,8 @@ function serializeModule(module: {
   slug: string;
   title: string;
   subtitle: string | null;
+  buttonLabel: string | null;
+  buttonUrl: string | null;
   mediaQuery: Prisma.JsonValue;
   sortOrder: number;
   isActive: boolean;
@@ -40,6 +42,8 @@ function serializeModule(module: {
     slug: module.slug,
     title: module.title,
     subtitle: module.subtitle ?? undefined,
+    buttonLabel: module.buttonLabel ?? undefined,
+    buttonUrl: module.buttonUrl ?? undefined,
     mediaQuery: normalizeMediaQuery(module.mediaQuery),
     sortOrder: module.sortOrder,
     isActive: module.isActive
@@ -228,6 +232,8 @@ export async function PUT(request: NextRequest) {
           slug: module.slug,
           title: module.title,
           subtitle: module.subtitle,
+          buttonLabel: module.buttonLabel,
+          buttonUrl: module.buttonUrl,
           mediaQuery: module.mediaQuery,
           sortOrder: module.sortOrder,
           isActive: module.isActive

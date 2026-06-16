@@ -79,6 +79,9 @@ model HomepageSlide {
   imageUrl        String
   linkUrl         String?
   linkLabel       String?
+  notesColor      String   @default("#ffffff")
+  buttonTextColor String   @default("#000000")
+  buttonBgColor   String   @default("#ffffff")
   imageEffectMs   Int      @default(6000)
   textEffectMs    Int      @default(1500)
   sortOrder       Int      @default(0)
@@ -95,6 +98,8 @@ model ModuleConfig {
   slug       String   @unique
   title      String
   subtitle   String?
+  buttonLabel String?
+  buttonUrl   String?
   mediaQuery Json
   sortOrder  Int      @default(0)
   isActive   Boolean  @default(true)

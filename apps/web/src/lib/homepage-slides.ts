@@ -9,6 +9,9 @@ export type HomepageSlideInput = {
   imageUrl: string;
   linkUrl?: string;
   linkLabel?: string;
+  notesColor: string;
+  buttonTextColor: string;
+  buttonBgColor: string;
   imageEffectMs: number;
   textEffectMs: number;
   sortOrder: number;
@@ -32,6 +35,9 @@ export function toHeroSlide(slide: HomepageSlideRecord): HeroSlide {
     imageUrl: slide.imageUrl,
     ctaLabel: slide.linkLabel || "Guarda",
     href: slide.linkUrl || "#web-live",
+    notesColor: slide.notesColor,
+    buttonTextColor: slide.buttonTextColor,
+    buttonBgColor: slide.buttonBgColor,
     imageEffectMs: slide.imageEffectMs,
     textEffectMs: slide.textEffectMs
   };
@@ -46,6 +52,9 @@ export function getDefaultHomepageSlides(): HomepageSlideRecord[] {
     imageUrl: slide.imageUrl,
     linkUrl: slide.href,
     linkLabel: slide.ctaLabel,
+    notesColor: slide.notesColor ?? "#ffffff",
+    buttonTextColor: slide.buttonTextColor ?? "#000000",
+    buttonBgColor: slide.buttonBgColor ?? "#ffffff",
     imageEffectMs: slide.imageEffectMs ?? DEFAULT_HOME_CONFIG.head.autoplayMs,
     textEffectMs: slide.textEffectMs ?? 1500,
     sortOrder: (index + 1) * 10,
@@ -59,6 +68,10 @@ function isString(value: unknown): value is string {
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 }
 
 export function normalizeHomepageSlide(
@@ -85,6 +98,11 @@ export function normalizeHomepageSlide(
     imageUrl,
     linkUrl: isString(slide.linkUrl) ? slide.linkUrl.trim() : undefined,
     linkLabel: isString(slide.linkLabel) ? slide.linkLabel.trim() : undefined,
+    notesColor: isHexColor(slide.notesColor) ? slide.notesColor : "#ffffff",
+    buttonTextColor: isHexColor(slide.buttonTextColor)
+      ? slide.buttonTextColor
+      : "#000000",
+    buttonBgColor: isHexColor(slide.buttonBgColor) ? slide.buttonBgColor : "#ffffff",
     imageEffectMs: isNumber(slide.imageEffectMs)
       ? Math.max(1000, Math.round(slide.imageEffectMs))
       : 6000,

@@ -39,6 +39,9 @@ function createSlide(): HomepageSlideInput {
     imageUrl: "",
     linkUrl: "#web-live",
     linkLabel: "Guarda",
+    notesColor: "#ffffff",
+    buttonTextColor: "#000000",
+    buttonBgColor: "#ffffff",
     imageEffectMs: 6000,
     textEffectMs: 1500,
     sortOrder: 0,
@@ -55,6 +58,9 @@ function toInputSlides(slides: HomepageSlideRecord[]): HomepageSlideInput[] {
     imageUrl: slide.imageUrl,
     linkUrl: slide.linkUrl,
     linkLabel: slide.linkLabel,
+    notesColor: slide.notesColor,
+    buttonTextColor: slide.buttonTextColor,
+    buttonBgColor: slide.buttonBgColor,
     imageEffectMs: slide.imageEffectMs,
     textEffectMs: slide.textEffectMs,
     sortOrder: slide.sortOrder,
@@ -228,7 +234,7 @@ export default function HomepageCarouselEditor() {
         return nextIds;
       });
       setMessage(
-        `Immagine convertita in WEBP ${data.width ?? 1920}x${data.height ?? 1080}. Premi Salva per pubblicare la slide.`
+        `Immagine convertita in WEBP ${data.width ?? 1920}x${data.height ?? 1080} senza zoom. Premi Salva per pubblicare la slide.`
       );
     } catch (error) {
       setStatus("error");
@@ -320,7 +326,7 @@ export default function HomepageCarouselEditor() {
                     <img
                       src={previewImageUrl}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                       onError={() =>
                         setBrokenImageIds((currentIds) => {
                           const nextIds = new Set(currentIds);
@@ -357,7 +363,7 @@ export default function HomepageCarouselEditor() {
                   />
                 </label>
                 <p className="text-xs leading-5 text-white/45">
-                  Conversione automatica: WEBP 1920x1080, formato 16:9.
+                  Conversione automatica: WEBP 1920x1080, formato 16:9 senza zoom.
                 </p>
               </div>
 
@@ -436,6 +442,54 @@ export default function HomepageCarouselEditor() {
                         })
                       }
                       className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                      Colore note
+                    </span>
+                    <input
+                      type="color"
+                      value={slide.notesColor}
+                      onChange={(event) =>
+                        updateSlide(index, {
+                          notesColor: event.currentTarget.value
+                        })
+                      }
+                      className="h-10 w-full cursor-pointer rounded-md border border-white/10 bg-black/50 p-1 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                      Testo pulsante
+                    </span>
+                    <input
+                      type="color"
+                      value={slide.buttonTextColor}
+                      onChange={(event) =>
+                        updateSlide(index, {
+                          buttonTextColor: event.currentTarget.value
+                        })
+                      }
+                      className="h-10 w-full cursor-pointer rounded-md border border-white/10 bg-black/50 p-1 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                      Sfondo pulsante
+                    </span>
+                    <input
+                      type="color"
+                      value={slide.buttonBgColor}
+                      onChange={(event) =>
+                        updateSlide(index, {
+                          buttonBgColor: event.currentTarget.value
+                        })
+                      }
+                      className="h-10 w-full cursor-pointer rounded-md border border-white/10 bg-black/50 p-1 outline-none"
                     />
                   </label>
                 </div>

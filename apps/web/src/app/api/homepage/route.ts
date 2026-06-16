@@ -28,6 +28,9 @@ function serializeSlide(slide: {
   imageUrl: string;
   linkUrl: string | null;
   linkLabel: string | null;
+  notesColor: string;
+  buttonTextColor: string;
+  buttonBgColor: string;
   imageEffectMs: number;
   textEffectMs: number;
   sortOrder: number;
@@ -43,6 +46,9 @@ function serializeSlide(slide: {
     imageUrl: slide.imageUrl,
     linkUrl: slide.linkUrl ?? undefined,
     linkLabel: slide.linkLabel ?? undefined,
+    notesColor: slide.notesColor,
+    buttonTextColor: slide.buttonTextColor,
+    buttonBgColor: slide.buttonBgColor,
     imageEffectMs: slide.imageEffectMs,
     textEffectMs: slide.textEffectMs,
     sortOrder: slide.sortOrder,
@@ -150,6 +156,9 @@ export async function PUT(request: NextRequest) {
           imageUrl: slide.imageUrl,
           linkUrl: slide.linkUrl,
           linkLabel: slide.linkLabel,
+          notesColor: slide.notesColor,
+          buttonTextColor: slide.buttonTextColor,
+          buttonBgColor: slide.buttonBgColor,
           imageEffectMs: slide.imageEffectMs,
           textEffectMs: slide.textEffectMs,
           sortOrder: slide.sortOrder,

@@ -124,8 +124,13 @@ export async function POST(request: NextRequest) {
     })
       .rotate()
       .resize(CAROUSEL_WIDTH, CAROUSEL_HEIGHT, {
-        fit: "cover",
-        position: "attention",
+        background: {
+          alpha: 1,
+          b: 0,
+          g: 0,
+          r: 0
+        },
+        fit: "contain",
         withoutEnlargement: false
       })
       .webp({

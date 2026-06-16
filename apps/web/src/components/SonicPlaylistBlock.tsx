@@ -75,6 +75,11 @@ export default function SonicPlaylistBlock({ module }: SonicPlaylistBlockProps) 
                   <p className="sonicPlaylistBlock__subtitle">{module.subtitle}</p>
                 ) : null}
               </div>
+              {module.buttonLabel && module.buttonUrl ? (
+                <a className="sonicPlaylistBlock__cta" href={module.buttonUrl}>
+                  {module.buttonLabel}
+                </a>
+              ) : null}
             </div>
 
             <div className="carousel carousel--sonicPlaylist sonicPlaylistBlock__carousel">

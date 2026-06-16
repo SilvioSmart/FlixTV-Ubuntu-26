@@ -73,11 +73,11 @@ input {
 
 @keyframes hero-image-scroll {
   from {
-    transform: scale(1.08) translateX(-2.5%);
+    transform: translateX(-1.5%);
   }
 
   to {
-    transform: scale(1.14) translateX(2.5%);
+    transform: translateX(1.5%);
   }
 }
 
@@ -180,6 +180,8 @@ input {
   align-items: flex-start;
   display: flex;
   flex: 1 1 auto;
+  gap: 18px;
+  justify-content: space-between;
   min-height: 116px;
   padding: 0 0 18px;
 }
@@ -198,6 +200,29 @@ input {
   line-height: 1.55;
   margin-top: 8px;
   max-width: 760px;
+}
+
+.sonicPlaylistBlock__cta {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f9f9f9;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 900;
+  height: 40px;
+  justify-content: center;
+  letter-spacing: 0.08em;
+  padding: 0 16px;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.sonicPlaylistBlock__cta:hover {
+  background: #f9f9f9;
+  border-color: #f9f9f9;
+  color: #050505;
 }
 
 .sonicPlaylistBlock__layout {
@@ -411,6 +436,13 @@ input {
 .sonicPlaylistBlock:hover .sonicPlaylist-swiper-prev,
 .sonicPlaylistBlock:hover .sonicPlaylist-swiper-next {
   opacity: 1;
+}
+
+@media (max-width: 63.99rem) {
+  .sonicPlaylistBlock__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (min-width: 64rem) {

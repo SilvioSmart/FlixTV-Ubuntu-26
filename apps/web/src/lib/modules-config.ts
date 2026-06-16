@@ -18,6 +18,8 @@ export type ModuleConfigRecord = {
   slug: string;
   title: string;
   subtitle?: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
   mediaQuery: ModuleMediaQuery;
   sortOrder: number;
   isActive: boolean;
@@ -28,6 +30,8 @@ export type ModuleConfigInput = {
   slug: string;
   title: string;
   subtitle?: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
   mediaQuery: ModuleMediaQuery;
   sortOrder: number;
   isActive: boolean;
@@ -122,6 +126,14 @@ export function normalizeModuleConfig(
       typeof module.subtitle === "string" && module.subtitle.trim()
         ? module.subtitle.trim()
         : undefined,
+    buttonLabel:
+      typeof module.buttonLabel === "string" && module.buttonLabel.trim()
+        ? module.buttonLabel.trim()
+        : undefined,
+    buttonUrl:
+      typeof module.buttonUrl === "string" && module.buttonUrl.trim()
+        ? module.buttonUrl.trim()
+        : undefined,
     mediaQuery: normalizeMediaQuery(module.mediaQuery),
     sortOrder: (index + 1) * 10,
     isActive: typeof module.isActive === "boolean" ? module.isActive : true
@@ -144,6 +156,8 @@ export function getDefaultModuleConfigs(): ModuleConfigRecord[] {
     slug: module.id,
     title: module.title,
     subtitle: module.subtitle,
+    buttonLabel: "Guarda tutto",
+    buttonUrl: `#${module.id}`,
     mediaQuery: {
       search: module.title,
       limit: 12,
@@ -194,6 +208,8 @@ export function buildVideoGalleryModule(
     type: "video-gallery",
     title: module.title,
     subtitle: module.subtitle,
+    buttonLabel: module.buttonLabel,
+    buttonUrl: module.buttonUrl,
     isEnabled: module.isActive,
     defaultVideoId: items[0]?.id,
     items

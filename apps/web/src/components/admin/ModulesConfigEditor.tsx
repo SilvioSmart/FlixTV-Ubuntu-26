@@ -37,6 +37,8 @@ function createModule(): ModuleConfigInput {
     slug: `modulo-${Date.now()}`,
     title: "Nuovo modulo",
     subtitle: "Selezione contenuti",
+    buttonLabel: "Guarda tutto",
+    buttonUrl: "#",
     mediaQuery: {
       limit: 12,
       orderBy: "newest"
@@ -52,6 +54,8 @@ function toInputModules(modules: ModuleConfigRecord[]): ModuleConfigInput[] {
     slug: module.slug,
     title: module.title,
     subtitle: module.subtitle,
+    buttonLabel: module.buttonLabel,
+    buttonUrl: module.buttonUrl,
     mediaQuery: module.mediaQuery,
     sortOrder: module.sortOrder,
     isActive: module.isActive
@@ -398,6 +402,37 @@ export default function ModulesConfigEditor() {
                     <option value="oldest">Meno recenti</option>
                     <option value="title">Titolo A-Z</option>
                   </select>
+                </label>
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                    Testo pulsante modulo
+                  </span>
+                  <input
+                    value={module.buttonLabel ?? ""}
+                    onChange={(event) =>
+                      updateModule(index, {
+                        buttonLabel: event.currentTarget.value
+                      })
+                    }
+                    className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                    Link pulsante modulo
+                  </span>
+                  <input
+                    value={module.buttonUrl ?? ""}
+                    onChange={(event) =>
+                      updateModule(index, {
+                        buttonUrl: event.currentTarget.value
+                      })
+                    }
+                    className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
+                  />
                 </label>
               </div>
 

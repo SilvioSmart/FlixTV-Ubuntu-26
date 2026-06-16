@@ -13,6 +13,9 @@ export type HeroSlide = {
   imageUrl: string;
   ctaLabel: string;
   href: string;
+  notesColor?: string;
+  buttonTextColor?: string;
+  buttonBgColor?: string;
   imageEffectMs?: number;
   textEffectMs?: number;
 };
@@ -77,7 +80,7 @@ export default function HeroCarousel({
           key={activeSlide.id}
           src={activeSlide.imageUrl}
           alt=""
-          className="hero-carousel-image h-full w-full object-cover opacity-70"
+          className="hero-carousel-image h-full w-full object-contain opacity-80"
           style={{
             animationDuration: `${activeSlide.imageEffectMs ?? autoplayMs}ms`
           }}
@@ -123,7 +126,8 @@ export default function HeroCarousel({
             className="hero-text-reveal mt-5 max-w-xl text-left text-base leading-7 text-white/75 sm:text-lg"
             style={{
               animationDelay: `${Math.round(textEffectMs * 0.32)}ms`,
-              animationDuration: `${textEffectMs}ms`
+              animationDuration: `${textEffectMs}ms`,
+              color: activeSlide.notesColor ?? undefined
             }}
           >
             {activeSlide.description}
@@ -133,7 +137,9 @@ export default function HeroCarousel({
             className="hero-text-reveal mt-7 inline-flex h-12 items-center gap-3 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-white/90"
             style={{
               animationDelay: `${Math.round(textEffectMs * 0.42)}ms`,
-              animationDuration: `${textEffectMs}ms`
+              animationDuration: `${textEffectMs}ms`,
+              backgroundColor: activeSlide.buttonBgColor ?? undefined,
+              color: activeSlide.buttonTextColor ?? undefined
             }}
           >
             <Play size={18} fill="currentColor" />

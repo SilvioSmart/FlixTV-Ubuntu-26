@@ -18,6 +18,8 @@ export type VideoGalleryModuleConfig = {
   type: "video-gallery";
   title: string;
   subtitle?: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
   isEnabled: boolean;
   defaultVideoId?: string;
   items: HomeVideoItem[];
@@ -329,6 +331,8 @@ function normalizeModule(value: unknown, index: number): VideoGalleryModuleConfi
     type: "video-gallery",
     title: module.title,
     subtitle: isString(module.subtitle) ? module.subtitle : undefined,
+    buttonLabel: isString(module.buttonLabel) ? module.buttonLabel : undefined,
+    buttonUrl: isString(module.buttonUrl) ? module.buttonUrl : undefined,
     isEnabled: isBoolean(module.isEnabled) ? module.isEnabled : true,
     defaultVideoId: isString(module.defaultVideoId) ? module.defaultVideoId : items[0]?.id,
     items
