@@ -12,6 +12,7 @@ export type HeroSlide = {
   notes?: string;
   imageUrl: string;
   ctaLabel: string;
+  secondaryCtaLabel?: string;
   href: string;
   notesColor?: string;
   buttonTextColor?: string;
@@ -76,16 +77,18 @@ export default function HeroCarousel({
       onBlur={() => setIsPaused(false)}
     >
       <div className="absolute inset-0">
-        <img
-          key={activeSlide.id}
-          src={activeSlide.imageUrl}
-          alt=""
-          className="hero-carousel-image h-full w-full object-contain opacity-80"
-          style={{
-            animationDuration: `${activeSlide.imageEffectMs ?? autoplayMs}ms`
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/10" />
+        <div className="hero-carousel-imageFrame absolute inset-y-0 right-0 w-full">
+          <img
+            key={activeSlide.id}
+            src={activeSlide.imageUrl}
+            alt=""
+            className="hero-carousel-image h-full w-full object-contain object-right opacity-85"
+            style={{
+              animationDuration: `${activeSlide.imageEffectMs ?? autoplayMs}ms`
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-canvas-950 to-transparent" />
       </div>
 
@@ -132,19 +135,35 @@ export default function HeroCarousel({
           >
             {activeSlide.description}
           </p>
-          <a
-            href={activeSlide.href}
-            className="hero-text-reveal mt-7 inline-flex h-12 items-center gap-3 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-white/90"
-            style={{
-              animationDelay: `${Math.round(textEffectMs * 0.42)}ms`,
-              animationDuration: `${textEffectMs}ms`,
-              backgroundColor: activeSlide.buttonBgColor ?? undefined,
-              color: activeSlide.buttonTextColor ?? undefined
-            }}
-          >
-            <Play size={18} fill="currentColor" />
-            {activeSlide.ctaLabel}
-          </a>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <a
+              href={activeSlide.href}
+              className="hero-text-reveal inline-flex h-12 items-center gap-3 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-white/90"
+              style={{
+                animationDelay: `${Math.round(textEffectMs * 0.42)}ms`,
+                animationDuration: `${textEffectMs}ms`,
+                backgroundColor: activeSlide.buttonBgColor ?? undefined,
+                color: activeSlide.buttonTextColor ?? undefined
+              }}
+            >
+              <Play size={18} fill="currentColor" />
+              {activeSlide.ctaLabel}
+            </a>
+            {activeSlide.secondaryCtaLabel ? (
+              <a
+                href={activeSlide.href}
+                className="hero-text-reveal inline-flex h-12 items-center rounded-md border px-5 text-sm font-black uppercase tracking-[0.12em] transition hover:bg-white/10"
+                style={{
+                  animationDelay: `${Math.round(textEffectMs * 0.5)}ms`,
+                  animationDuration: `${textEffectMs}ms`,
+                  borderColor: activeSlide.buttonBgColor ?? undefined,
+                  color: activeSlide.buttonBgColor ?? undefined
+                }}
+              >
+                {activeSlide.secondaryCtaLabel}
+              </a>
+            ) : null}
+          </div>
         </div>
 
         <div className="absolute bottom-10 right-4 flex items-center gap-2 sm:right-6 lg:right-10 xl:right-14 2xl:right-16">

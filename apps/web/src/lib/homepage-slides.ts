@@ -9,6 +9,7 @@ export type HomepageSlideInput = {
   imageUrl: string;
   linkUrl?: string;
   linkLabel?: string;
+  secondaryLinkLabel?: string;
   notesColor: string;
   buttonTextColor: string;
   buttonBgColor: string;
@@ -34,6 +35,7 @@ export function toHeroSlide(slide: HomepageSlideRecord): HeroSlide {
     notes: slide.notes,
     imageUrl: slide.imageUrl,
     ctaLabel: slide.linkLabel || "Guarda",
+    secondaryCtaLabel: slide.secondaryLinkLabel,
     href: slide.linkUrl || "#web-live",
     notesColor: slide.notesColor,
     buttonTextColor: slide.buttonTextColor,
@@ -52,6 +54,7 @@ export function getDefaultHomepageSlides(): HomepageSlideRecord[] {
     imageUrl: slide.imageUrl,
     linkUrl: slide.href,
     linkLabel: slide.ctaLabel,
+    secondaryLinkLabel: slide.secondaryCtaLabel,
     notesColor: slide.notesColor ?? "#ffffff",
     buttonTextColor: slide.buttonTextColor ?? "#000000",
     buttonBgColor: slide.buttonBgColor ?? "#ffffff",
@@ -98,6 +101,9 @@ export function normalizeHomepageSlide(
     imageUrl,
     linkUrl: isString(slide.linkUrl) ? slide.linkUrl.trim() : undefined,
     linkLabel: isString(slide.linkLabel) ? slide.linkLabel.trim() : undefined,
+    secondaryLinkLabel: isString(slide.secondaryLinkLabel)
+      ? slide.secondaryLinkLabel.trim()
+      : undefined,
     notesColor: isHexColor(slide.notesColor) ? slide.notesColor : "#ffffff",
     buttonTextColor: isHexColor(slide.buttonTextColor)
       ? slide.buttonTextColor

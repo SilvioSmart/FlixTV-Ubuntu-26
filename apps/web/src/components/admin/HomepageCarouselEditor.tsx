@@ -39,6 +39,7 @@ function createSlide(): HomepageSlideInput {
     imageUrl: "",
     linkUrl: "#web-live",
     linkLabel: "Guarda",
+    secondaryLinkLabel: "",
     notesColor: "#ffffff",
     buttonTextColor: "#000000",
     buttonBgColor: "#ffffff",
@@ -58,6 +59,7 @@ function toInputSlides(slides: HomepageSlideRecord[]): HomepageSlideInput[] {
     imageUrl: slide.imageUrl,
     linkUrl: slide.linkUrl,
     linkLabel: slide.linkLabel,
+    secondaryLinkLabel: slide.secondaryLinkLabel,
     notesColor: slide.notesColor,
     buttonTextColor: slide.buttonTextColor,
     buttonBgColor: slide.buttonBgColor,
@@ -415,7 +417,7 @@ export default function HomepageCarouselEditor() {
                   />
                 </label>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <label className="block">
                     <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
                       Link
@@ -432,13 +434,27 @@ export default function HomepageCarouselEditor() {
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
-                      Testo pulsante
+                      Testo pulsante 1
                     </span>
                     <input
                       value={slide.linkLabel ?? ""}
                       onChange={(event) =>
                         updateSlide(index, {
                           linkLabel: event.currentTarget.value
+                        })
+                      }
+                      className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                      Testo pulsante 2
+                    </span>
+                    <input
+                      value={slide.secondaryLinkLabel ?? ""}
+                      onChange={(event) =>
+                        updateSlide(index, {
+                          secondaryLinkLabel: event.currentTarget.value
                         })
                       }
                       className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm font-bold text-white outline-none"

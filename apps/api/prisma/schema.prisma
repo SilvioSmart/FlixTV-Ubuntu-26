@@ -79,6 +79,7 @@ model HomepageSlide {
   imageUrl        String
   linkUrl         String?
   linkLabel       String?
+  secondaryLinkLabel String?
   notesColor      String   @default("#ffffff")
   buttonTextColor String   @default("#000000")
   buttonBgColor   String   @default("#ffffff")

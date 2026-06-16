@@ -28,6 +28,7 @@ function serializeSlide(slide: {
   imageUrl: string;
   linkUrl: string | null;
   linkLabel: string | null;
+  secondaryLinkLabel: string | null;
   notesColor: string;
   buttonTextColor: string;
   buttonBgColor: string;
@@ -46,6 +47,7 @@ function serializeSlide(slide: {
     imageUrl: slide.imageUrl,
     linkUrl: slide.linkUrl ?? undefined,
     linkLabel: slide.linkLabel ?? undefined,
+    secondaryLinkLabel: slide.secondaryLinkLabel ?? undefined,
     notesColor: slide.notesColor,
     buttonTextColor: slide.buttonTextColor,
     buttonBgColor: slide.buttonBgColor,
@@ -156,6 +158,7 @@ export async function PUT(request: NextRequest) {
           imageUrl: slide.imageUrl,
           linkUrl: slide.linkUrl,
           linkLabel: slide.linkLabel,
+          secondaryLinkLabel: slide.secondaryLinkLabel,
           notesColor: slide.notesColor,
           buttonTextColor: slide.buttonTextColor,
           buttonBgColor: slide.buttonBgColor,
