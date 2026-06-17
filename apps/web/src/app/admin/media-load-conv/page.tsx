@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FileVideo,
   FolderCog,
+  FolderOpen,
   Loader2,
   Plus,
   RotateCcw,
   Save,
-  Settings,
   Trash2,
   UploadCloud
 } from "lucide-react";
@@ -29,6 +29,7 @@ import { buildBackendUrl } from "@/lib/platform-config";
 
 type ActiveSection = "media" | "convert" | "config";
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
+type StorageField = keyof MediaConfig["storage"];
 
 type MediaConfigResponse = {
   config?: MediaConfig;
@@ -48,6 +49,15 @@ const SECTION_BUTTONS: Array<{
   { id: "media", label: "MEDIA" },
   { id: "convert", label: "CONVERT" },
   { id: "config", label: "CONFIG" }
+];
+
+const STORAGE_ROWS: Array<{
+  field: StorageField;
+  label: string;
+}> = [
+  { field: "uploadPath", label: "File media caricati" },
+  { field: "convertedPath", label: "File media convertiti" },
+  { field: "thumbnailPath", label: "File thumbnail" }
 ];
 
 function createTempId() {
@@ -73,6 +83,9 @@ export default function MediaLoadConversionPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("media");
   const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<MediaConfig>(DEFAULT_MEDIA_CONFIG);
+  const [savedStorage, setSavedStorage] = useState<MediaConfig["storage"]>(
+    DEFAULT_MEDIA_CONFIG.storage
+  );
   const [programs, setPrograms] = useState<ProgramDetail[]>(DEFAULT_PROGRAMS);
   const [draftPrograms, setDraftPrograms] = useState<Record<string, ProgramDetail>>({});
   const [status, setStatus] = useState<SaveStatus>("loading");
@@ -102,7 +115,9 @@ export default function MediaLoadConversionPage() {
 
         if (configResponse.ok) {
           const configData = (await configResponse.json()) as MediaConfigResponse;
-          setConfig(normalizeMediaConfig(configData.config));
+          const normalizedConfig = normalizeMediaConfig(configData.config);
+          setConfig(normalizedConfig);
+          setSavedStorage(normalizedConfig.storage);
         }
 
         if (programsResponse.ok) {
@@ -118,6 +133,7 @@ export default function MediaLoadConversionPage() {
         }
 
         setConfig(DEFAULT_MEDIA_CONFIG);
+        setSavedStorage(DEFAULT_MEDIA_CONFIG.storage);
         setPrograms(DEFAULT_PROGRAMS);
         setStatus("error");
         setMessage("Uso la configurazione media predefinita.");
@@ -152,6 +168,24 @@ export default function MediaLoadConversionPage() {
       }
     }));
     setMessage("Modifiche in bozza: premi Salva in CONFIG.");
+  }
+
+  function browseStoragePath(field: StorageField) {
+    const selectedPath = window.prompt("Percorso storage/server", config.storage[field]);
+
+    if (selectedPath === null) {
+      return;
+    }
+
+    updateStorage({ [field]: selectedPath } as Partial<MediaConfig["storage"]>);
+  }
+
+  function cancelStoragePath(field: StorageField) {
+    updateStorage({ [field]: savedStorage[field] } as Partial<MediaConfig["storage"]>);
+  }
+
+  function clearStoragePath(field: StorageField) {
+    updateStorage({ [field]: "" } as Partial<MediaConfig["storage"]>);
   }
 
   function updateProgramDraft(rowKey: string, patch: Partial<ProgramDetail>) {
@@ -318,7 +352,9 @@ export default function MediaLoadConversionPage() {
         throw new Error(data.error || "Salvataggio configurazione non riuscito.");
       }
 
-      setConfig(normalizeMediaConfig(data.config));
+      const normalizedConfig = normalizeMediaConfig(data.config);
+      setConfig(normalizedConfig);
+      setSavedStorage(normalizedConfig.storage);
       setStatus("saved");
       setMessage("Configurazione cartelle salvata.");
     } catch (error) {
@@ -435,43 +471,80 @@ export default function MediaLoadConversionPage() {
       ) : null}
 
       {activeSection === "config" ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-5">
+        <div className="space-y-5">
             <AdminCard
-              title="Indirizzi/cartelle"
+              title="STORAGE/SERVER"
               description="Percorsi server usati per media sorgente, media convertiti e thumbnail."
             >
+              <div className="mb-4 rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
+                {status === "saving" || status === "loading" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    {message}
+                  </span>
+                ) : (
+                  message
+                )}
+              </div>
+
               <div className="grid gap-3">
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                    File media caricati
-                  </span>
-                  <input
-                    value={config.storage.uploadPath}
-                    onChange={(event) => updateStorage({ uploadPath: event.currentTarget.value })}
-                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                    File media convertiti
-                  </span>
-                  <input
-                    value={config.storage.convertedPath}
-                    onChange={(event) => updateStorage({ convertedPath: event.currentTarget.value })}
-                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-                    File thumbnail
-                  </span>
-                  <input
-                    value={config.storage.thumbnailPath}
-                    onChange={(event) => updateStorage({ thumbnailPath: event.currentTarget.value })}
-                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
-                  />
-                </label>
+                {STORAGE_ROWS.map((row) => (
+                  <div
+                    key={row.field}
+                    className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center"
+                  >
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                      {row.label}
+                    </span>
+                    <input
+                      value={config.storage[row.field]}
+                      onChange={(event) =>
+                        updateStorage({
+                          [row.field]: event.currentTarget.value
+                        } as Partial<MediaConfig["storage"]>)
+                      }
+                      className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                    />
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => browseStoragePath(row.field)}
+                        title="Sfoglia"
+                        aria-label={`Sfoglia ${row.label}`}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+                      >
+                        <FolderOpen size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => cancelStoragePath(row.field)}
+                        title="Annulla"
+                        aria-label={`Annulla modifiche ${row.label}`}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+                      >
+                        <RotateCcw size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => clearStoragePath(row.field)}
+                        title="Cancella"
+                        aria-label={`Cancella ${row.label}`}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-red-400/20 text-red-100 transition hover:bg-red-500/15"
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveStorageConfig}
+                        title="Salva"
+                        aria-label={`Salva ${row.label}`}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-black transition hover:bg-white/90"
+                      >
+                        <Save size={17} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </AdminCard>
 
@@ -572,32 +645,6 @@ export default function MediaLoadConversionPage() {
                 </table>
               </div>
             </AdminCard>
-          </div>
-
-          <aside className="space-y-4">
-            <AdminCard title="Stato configurazione">
-              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-white">
-                {status === "saving" || status === "loading" ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Settings size={18} />
-                )}
-                CONFIG
-              </div>
-              <p className="mt-3 text-sm leading-6 text-white/65">{message}</p>
-              <p className="mt-3 text-sm leading-6 text-white/45">
-                Programmi configurati: {programs.length}
-              </p>
-              <button
-                type="button"
-                onClick={saveStorageConfig}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90"
-              >
-                <Save size={18} />
-                Salva cartelle
-              </button>
-            </AdminCard>
-          </aside>
         </div>
       ) : null}
     </AdminShell>

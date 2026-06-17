@@ -112,7 +112,7 @@ function isString(value: unknown): value is string {
 }
 
 function normalizePath(value: unknown, fallback: string) {
-  return isString(value) && value.trim() ? value.trim() : fallback;
+  return isString(value) ? value.trim() : fallback;
 }
 
 function slugifyOptionValue(value: string) {
