@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  Clapperboard,
   FileVideo,
   FolderCog,
   FolderOpen,
@@ -23,17 +24,23 @@ import {
   type MediaConfig
 } from "@/lib/media-config";
 import {
+  ACCESS_LEVELS,
+  createEpisodeDraft,
   DEFAULT_PROGRAMS,
+  MAX_RESOLUTIONS,
   normalizeProgram,
+  PUBLICATION_STATUSES,
   uniqueValues,
+  type ProgramEpisode,
   type ProgramDetail
 } from "@/lib/programs-config";
 import { buildBackendUrl } from "@/lib/platform-config";
 
-type ActiveSection = "media" | "convert" | "config";
+type ActiveSection = "catalog" | "video" | "convert" | "config";
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 type StorageField = keyof MediaConfig["storage"];
 type CatalogNodeType = "category" | "program" | "season";
+type EpisodeTab = "info" | "media" | "technical" | "rights";
 
 type MediaConfigResponse = {
   config?: MediaConfig;
@@ -43,6 +50,12 @@ type MediaConfigResponse = {
 type ProgramsResponse = {
   programs?: ProgramDetail[];
   program?: ProgramDetail;
+  error?: string;
+};
+
+type EpisodesResponse = {
+  episodes?: ProgramEpisode[];
+  episode?: ProgramEpisode;
   error?: string;
 };
 
@@ -66,9 +79,20 @@ const SECTION_BUTTONS: Array<{
   id: ActiveSection;
   label: string;
 }> = [
-  { id: "media", label: "MEDIA" },
+  { id: "catalog", label: "CATALOGO" },
+  { id: "video", label: "VIDEO" },
   { id: "convert", label: "CONVERT" },
   { id: "config", label: "CONFIG" }
+];
+
+const EPISODE_TABS: Array<{
+  id: EpisodeTab;
+  label: string;
+}> = [
+  { id: "info", label: "Info generali" },
+  { id: "media", label: "Media e video" },
+  { id: "technical", label: "Punti e tecnica" },
+  { id: "rights", label: "Regole" }
 ];
 
 const STORAGE_ROWS: Array<{
@@ -161,13 +185,14 @@ function createDraftFromSelection(
 }
 
 export default function MediaLoadConversionPage() {
-  const [activeSection, setActiveSection] = useState<ActiveSection>("media");
+  const [activeSection, setActiveSection] = useState<ActiveSection>("catalog");
   const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<MediaConfig>(DEFAULT_MEDIA_CONFIG);
   const [savedStorage, setSavedStorage] = useState<MediaConfig["storage"]>(
     DEFAULT_MEDIA_CONFIG.storage
   );
   const [programs, setPrograms] = useState<ProgramDetail[]>(DEFAULT_PROGRAMS);
+  const [episodes, setEpisodes] = useState<ProgramEpisode[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogSelection | null>(
     getInitialSelection(DEFAULT_PROGRAMS)
   );
@@ -179,9 +204,18 @@ export default function MediaLoadConversionPage() {
   const [expandedTree, setExpandedTree] = useState<Record<string, boolean>>({
     "category:Sitcom": true
   });
+  const [selectedVideoSeasonId, setSelectedVideoSeasonId] = useState<string | null>(
+    DEFAULT_PROGRAMS[0]?.id ?? null
+  );
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
+  const [episodeDraft, setEpisodeDraft] = useState<ProgramEpisode | null>(
+    DEFAULT_PROGRAMS[0] ? createEpisodeDraft(DEFAULT_PROGRAMS[0]) : null
+  );
+  const [activeEpisodeTab, setActiveEpisodeTab] = useState<EpisodeTab>("info");
   const [status, setStatus] = useState<SaveStatus>("loading");
   const [message, setMessage] = useState("Caricamento configurazione media.");
   const [savingCatalog, setSavingCatalog] = useState(false);
+  const [savingEpisode, setSavingEpisode] = useState(false);
 
   const categoriaOptions = useMemo(() => uniqueValues(programs, "categoria"), [programs]);
   const catalogTree = useMemo(() => {
@@ -202,18 +236,56 @@ export default function MediaLoadConversionPage() {
       };
     });
   }, [categoriaOptions, programs]);
+  const videoTree = useMemo(() => {
+    return categoriaOptions.map((categoria) => {
+      const categoryPrograms = programs.filter((program) => program.categoria === categoria);
+      const programNames = uniqueValues(categoryPrograms, "programma");
+
+      return {
+        categoria,
+        programs: programNames.map((programma) => ({
+          programma,
+          seasons: categoryPrograms
+            .filter((program) => program.programma === programma)
+            .toSorted((firstProgram, secondProgram) =>
+              firstProgram.stagione.localeCompare(secondProgram.stagione)
+            )
+            .map((season) => ({
+              season,
+              episodes: episodes
+                .filter((episode) => episode.seasonId === season.id)
+                .toSorted((firstEpisode, secondEpisode) =>
+                  firstEpisode.episodeNumber - secondEpisode.episodeNumber
+                )
+            }))
+        }))
+      };
+    });
+  }, [categoriaOptions, episodes, programs]);
+  const selectedVideoSeason = useMemo(
+    () => programs.find((program) => (program.id ?? getProgramKey(program)) === selectedVideoSeasonId) ?? null,
+    [programs, selectedVideoSeasonId]
+  );
+  const selectedEpisode = useMemo(
+    () => episodes.find((episode) => episode.id === selectedEpisodeId) ?? null,
+    [episodes, selectedEpisodeId]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadData() {
       try {
-        const [configResponse, programsResponse] = await Promise.all([
+        const [configResponse, programsResponse, episodesResponse] = await Promise.all([
           fetch(buildBackendUrl("/api/media-config"), {
             credentials: "include",
             signal: controller.signal
           }),
           fetch(buildBackendUrl("/api/programs"), {
+            credentials: "include",
+            signal: controller.signal
+          }),
+          fetch(buildBackendUrl("/api/program-episodes"), {
             credentials: "include",
             signal: controller.signal
           })
@@ -235,6 +307,17 @@ export default function MediaLoadConversionPage() {
           setPrograms(loadedPrograms);
           setSelectedCatalog(initialSelection);
           setCatalogDraft(createDraftFromSelection(initialSelection, loadedPrograms));
+          const firstSeason = loadedPrograms[0] ?? null;
+
+          if (firstSeason) {
+            setSelectedVideoSeasonId(firstSeason.id ?? getProgramKey(firstSeason));
+            setEpisodeDraft(createEpisodeDraft(firstSeason));
+          }
+        }
+
+        if (episodesResponse.ok) {
+          const episodesData = (await episodesResponse.json()) as EpisodesResponse;
+          setEpisodes(Array.isArray(episodesData.episodes) ? episodesData.episodes : []);
         }
 
         setStatus("idle");
@@ -247,6 +330,7 @@ export default function MediaLoadConversionPage() {
         setConfig(DEFAULT_MEDIA_CONFIG);
         setSavedStorage(DEFAULT_MEDIA_CONFIG.storage);
         setPrograms(DEFAULT_PROGRAMS);
+        setEpisodes([]);
         setStatus("error");
         setMessage("Uso la configurazione media predefinita.");
       }
@@ -542,6 +626,149 @@ export default function MediaLoadConversionPage() {
     }
   }
 
+  function selectVideoSeason(season: ProgramDetail) {
+    const seasonId = season.id ?? getProgramKey(season);
+    setSelectedVideoSeasonId(seasonId);
+    setSelectedEpisodeId(null);
+    setEpisodeDraft(createEpisodeDraft(season));
+    setActiveEpisodeTab("info");
+  }
+
+  function selectEpisode(episode: ProgramEpisode) {
+    setSelectedVideoSeasonId(episode.seasonId);
+    setSelectedEpisodeId(episode.id ?? null);
+    setEpisodeDraft(episode);
+    setActiveEpisodeTab("info");
+  }
+
+  function createEpisodeForSeason() {
+    if (!selectedVideoSeason) {
+      setStatus("error");
+      setMessage("Seleziona una stagione nella sezione VIDEO prima di creare l'episodio.");
+      return;
+    }
+
+    if (!selectedVideoSeason.id || selectedVideoSeason.id.startsWith("default-")) {
+      setStatus("error");
+      setMessage("Salva prima la stagione nel database, poi crea il video.");
+      return;
+    }
+
+    const nextEpisode = createEpisodeDraft(selectedVideoSeason);
+    const seasonEpisodes = episodes.filter((episode) => episode.seasonId === selectedVideoSeason.id);
+    nextEpisode.episodeNumber = seasonEpisodes.length + 1;
+    setSelectedEpisodeId(nextEpisode.id ?? null);
+    setEpisodeDraft(nextEpisode);
+    setActiveEpisodeTab("info");
+    setMessage("Nuovo video in bozza.");
+  }
+
+  function updateEpisodeDraft(patch: Partial<ProgramEpisode>) {
+    setEpisodeDraft((currentDraft) => currentDraft ? { ...currentDraft, ...patch } : currentDraft);
+    setMessage("Modifiche video in bozza.");
+  }
+
+  async function saveEpisode() {
+    if (!episodeDraft) {
+      return;
+    }
+
+    if (!episodeDraft.title.trim()) {
+      setStatus("error");
+      setMessage("Il titolo del video e obbligatorio.");
+      return;
+    }
+
+    if (!episodeDraft.seasonId || episodeDraft.seasonId.startsWith("default-")) {
+      setStatus("error");
+      setMessage("Salva prima la stagione nel database, poi crea il video.");
+      return;
+    }
+
+    const isNew = !episodeDraft.id || episodeDraft.id.startsWith("temp-");
+    setSavingEpisode(true);
+    setStatus("saving");
+    setMessage("Salvataggio video in corso.");
+
+    try {
+      const response = await fetch(buildBackendUrl("/api/program-episodes"), {
+        method: isNew ? "POST" : "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...episodeDraft,
+          id: isNew ? undefined : episodeDraft.id
+        })
+      });
+      const data = (await response.json()) as EpisodesResponse;
+
+      if (!response.ok || !data.episode) {
+        throw new Error(data.error || "Salvataggio video non riuscito.");
+      }
+
+      setEpisodes((currentEpisodes) => {
+        const withoutSavedEpisode = currentEpisodes.filter((episode) => episode.id !== data.episode?.id);
+        return [...withoutSavedEpisode, data.episode as ProgramEpisode].toSorted(
+          (firstEpisode, secondEpisode) => firstEpisode.episodeNumber - secondEpisode.episodeNumber
+        );
+      });
+      setSelectedEpisodeId(data.episode.id ?? null);
+      setEpisodeDraft(data.episode);
+      setStatus("saved");
+      setMessage("Video salvato.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Salvataggio video non riuscito.");
+    } finally {
+      setSavingEpisode(false);
+    }
+  }
+
+  async function deleteEpisode() {
+    if (!episodeDraft?.id || episodeDraft.id.startsWith("temp-")) {
+      if (selectedVideoSeason) {
+        selectVideoSeason(selectedVideoSeason);
+      }
+      return;
+    }
+
+    setSavingEpisode(true);
+    setStatus("saving");
+    setMessage("Cancellazione video in corso.");
+
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/program-episodes?id=${encodeURIComponent(episodeDraft.id)}`),
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Cancellazione video non riuscita.");
+      }
+
+      setEpisodes((currentEpisodes) =>
+        currentEpisodes.filter((episode) => episode.id !== episodeDraft.id)
+      );
+
+      if (selectedVideoSeason) {
+        selectVideoSeason(selectedVideoSeason);
+      }
+
+      setStatus("saved");
+      setMessage("Video cancellato.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Cancellazione video non riuscita.");
+    } finally {
+      setSavingEpisode(false);
+    }
+  }
+
   async function saveStorageConfig() {
     setStatus("saving");
     setMessage("Salvataggio configurazione cartelle in corso.");
@@ -600,7 +827,7 @@ export default function MediaLoadConversionPage() {
         })}
       </div>
 
-      {activeSection === "media" ? (
+      {activeSection === "catalog" ? (
         <AdminCard
           title="Gestione Catalogo"
           description="Crea e modifica la struttura Categoria -> Programmi -> Stagione."
@@ -857,6 +1084,481 @@ export default function MediaLoadConversionPage() {
                 stagioni del programma selezionato. Stagione modifica una singola riga della tabella
                 programmi.
               </div>
+            </section>
+          </div>
+        </AdminCard>
+      ) : null}
+
+      {activeSection === "video" ? (
+        <AdminCard
+          title="Programmi"
+          description="Gestione video con struttura Categoria -> Programmi -> Stagione -> Episodio."
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
+              {status === "saving" || status === "loading" ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  {message}
+                </span>
+              ) : (
+                message
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={createEpisodeForSeason}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-3 text-sm font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90"
+              >
+                <Plus size={16} />
+                Nuovo video
+              </button>
+              <button
+                type="button"
+                onClick={deleteEpisode}
+                disabled={!episodeDraft || savingEpisode}
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-red-400/20 px-3 text-sm font-black uppercase tracking-[0.1em] text-red-100 transition hover:bg-red-500/15 disabled:opacity-40"
+              >
+                <Trash2 size={16} />
+                Cancella
+              </button>
+              <button
+                type="button"
+                onClick={saveEpisode}
+                disabled={!episodeDraft || savingEpisode}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-3 text-sm font-black uppercase tracking-[0.1em] text-black transition hover:bg-white/90 disabled:opacity-40"
+              >
+                {savingEpisode ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Salva
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+            <aside className="min-h-[640px] rounded-md border border-white/10 bg-black/30 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-white">
+                  <Layers size={17} />
+                  Video tree
+                </div>
+                <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-bold text-white/55">
+                  {episodes.length} video
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                {videoTree.map((categoryNode) => {
+                  const categoryKey = `video-category:${categoryNode.categoria}`;
+                  const isCategoryOpen = expandedTree[categoryKey] ?? true;
+
+                  return (
+                    <div key={categoryKey}>
+                      <button
+                        type="button"
+                        onClick={() => toggleTreeNode(categoryKey)}
+                        className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-black uppercase tracking-[0.08em] text-white transition hover:bg-white/10"
+                      >
+                        {isCategoryOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                        {categoryNode.categoria}
+                      </button>
+
+                      {isCategoryOpen ? (
+                        <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-2">
+                          {categoryNode.programs.map((programNode) => {
+                            const programKey = `${categoryKey}:program:${programNode.programma}`;
+                            const isProgramOpen = expandedTree[programKey] ?? true;
+
+                            return (
+                              <div key={programKey}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTreeNode(programKey)}
+                                  className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-bold text-white/80 transition hover:bg-white/10"
+                                >
+                                  {isProgramOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                                  {programNode.programma}
+                                </button>
+
+                                {isProgramOpen ? (
+                                  <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-2">
+                                    {programNode.seasons.map(({ season, episodes: seasonEpisodes }) => {
+                                      const seasonId = season.id ?? getProgramKey(season);
+                                      const seasonKey = `${programKey}:season:${seasonId}`;
+                                      const isSeasonOpen = expandedTree[seasonKey] ?? true;
+                                      const isSeasonSelected = selectedVideoSeasonId === seasonId && !selectedEpisode;
+
+                                      return (
+                                        <div key={seasonKey}>
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleTreeNode(seasonKey)}
+                                              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/55 transition hover:bg-white/10 hover:text-white"
+                                              aria-label="Apri stagione video"
+                                            >
+                                              {isSeasonOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => selectVideoSeason(season)}
+                                              className="flex min-h-9 flex-1 items-center justify-between gap-2 rounded-md px-2 text-left text-sm transition hover:bg-white/10"
+                                              style={{
+                                                backgroundColor: isSeasonSelected
+                                                  ? "rgba(255,255,255,0.14)"
+                                                  : "transparent",
+                                                color: isSeasonSelected ? "#ffffff" : "rgba(255,255,255,0.72)"
+                                              }}
+                                            >
+                                              <span>{season.stagione}</span>
+                                              <span className="text-xs text-white/40">
+                                                {seasonEpisodes.length}/{season.numeroPuntate}
+                                              </span>
+                                            </button>
+                                          </div>
+
+                                          {isSeasonOpen ? (
+                                            <div className="ml-8 mt-1 space-y-1">
+                                              {seasonEpisodes.map((episode) => {
+                                                const isEpisodeSelected = selectedEpisodeId === episode.id;
+
+                                                return (
+                                                  <button
+                                                    key={episode.id}
+                                                    type="button"
+                                                    onClick={() => selectEpisode(episode)}
+                                                    className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition hover:bg-white/10"
+                                                    style={{
+                                                      backgroundColor: isEpisodeSelected
+                                                        ? "rgba(255,255,255,0.14)"
+                                                        : "transparent",
+                                                      color: isEpisodeSelected
+                                                        ? "#ffffff"
+                                                        : "rgba(255,255,255,0.62)"
+                                                    }}
+                                                  >
+                                                    <Clapperboard size={14} />
+                                                    <span className="truncate">
+                                                      Ep. {episode.episodeNumber} - {episode.title}
+                                                    </span>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <section className="rounded-md border border-white/10 bg-black/25 p-4">
+              {episodeDraft ? (
+                <>
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-[0.14em] text-white/40">
+                        Video selezionato
+                      </div>
+                      <h3 className="mt-1 text-xl font-black text-white">
+                        {episodeDraft.title || "Nuovo video"}
+                      </h3>
+                      <p className="mt-1 text-sm text-white/55">
+                        ID episodio: {episodeDraft.id?.startsWith("temp-") ? "Autogenerato al salvataggio" : episodeDraft.id}
+                      </p>
+                      <p className="mt-1 text-sm text-white/45">
+                        ID stagione: {episodeDraft.seasonId} | ID serie: {episodeDraft.seriesId}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {EPISODE_TABS.map((tab) => {
+                      const isTabActive = activeEpisodeTab === tab.id;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setActiveEpisodeTab(tab.id)}
+                          className="h-10 rounded-md px-3 text-sm font-black uppercase tracking-[0.1em] transition"
+                          style={{
+                            backgroundColor: isTabActive ? "#ffffff" : "rgba(255,255,255,0.08)",
+                            color: isTabActive ? "#000000" : "rgba(255,255,255,0.7)"
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {activeEpisodeTab === "info" ? (
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Numero episodio
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          required
+                          value={episodeDraft.episodeNumber}
+                          onChange={(event) =>
+                            updateEpisodeDraft({ episodeNumber: Number(event.currentTarget.value) })
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Codice di produzione
+                        </span>
+                        <input
+                          value={episodeDraft.productionCode}
+                          onChange={(event) => updateEpisodeDraft({ productionCode: event.currentTarget.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                          placeholder="S01E01"
+                        />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Titolo episodio
+                        </span>
+                        <input
+                          maxLength={150}
+                          value={episodeDraft.title}
+                          onChange={(event) => updateEpisodeDraft({ title: event.currentTarget.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Sinossi breve
+                        </span>
+                        <input
+                          maxLength={250}
+                          value={episodeDraft.shortPlot}
+                          onChange={(event) => updateEpisodeDraft({ shortPlot: event.currentTarget.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Sinossi lunga
+                        </span>
+                        <textarea
+                          value={episodeDraft.longPlot}
+                          onChange={(event) => updateEpisodeDraft({ longPlot: event.currentTarget.value })}
+                          className="mt-1 min-h-32 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+
+                  {activeEpisodeTab === "media" ? (
+                    <div className="mt-5 grid gap-4">
+                      {[
+                        ["Immagine di anteprima", "thumbnailUrl", "JPG o WEBP 16:9"],
+                        ["File video principale", "mezzanineFileUrl", "Mezzanine file sorgente"],
+                        ["File trailer / anteprima", "trailerUrl", "Clip opzionale"]
+                      ].map(([label, field, hint]) => {
+                        const episodeField = field as "thumbnailUrl" | "mezzanineFileUrl" | "trailerUrl";
+
+                        return (
+                          <label key={field} className="block rounded-md border border-dashed border-white/15 bg-black/30 p-3">
+                            <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                              {label}
+                            </span>
+                            <input
+                              value={episodeDraft[episodeField]}
+                              onChange={(event) =>
+                                updateEpisodeDraft({
+                                  [episodeField]: event.currentTarget.value
+                                } as Partial<ProgramEpisode>)
+                              }
+                              className="mt-2 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                              placeholder={`Trascina file o incolla URL - ${hint}`}
+                            />
+                          </label>
+                        );
+                      })}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="block">
+                          <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                            Sottotitoli JSON
+                          </span>
+                          <textarea
+                            value={episodeDraft.subtitlesJson}
+                            onChange={(event) => updateEpisodeDraft({ subtitlesJson: event.currentTarget.value })}
+                            className="mt-1 min-h-32 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white outline-none"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                            Tracce audio JSON
+                          </span>
+                          <textarea
+                            value={episodeDraft.audioTracksJson}
+                            onChange={(event) => updateEpisodeDraft({ audioTracksJson: event.currentTarget.value })}
+                            className="mt-1 min-h-32 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white outline-none"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeEpisodeTab === "technical" ? (
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Durata secondi
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={episodeDraft.duration}
+                          onChange={(event) => updateEpisodeDraft({ duration: Number(event.currentTarget.value) })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Risoluzione massima
+                        </span>
+                        <select
+                          value={episodeDraft.maxResolution}
+                          onChange={(event) =>
+                            updateEpisodeDraft({
+                              maxResolution: event.currentTarget.value as ProgramEpisode["maxResolution"]
+                            })
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        >
+                          {MAX_RESOLUTIONS.map((resolution) => (
+                            <option key={resolution} value={resolution}>
+                              {resolution}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Cue points JSON
+                        </span>
+                        <textarea
+                          value={episodeDraft.cuePointsJson}
+                          onChange={(event) => updateEpisodeDraft({ cuePointsJson: event.currentTarget.value })}
+                          className="mt-1 min-h-32 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white outline-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Formati audio JSON
+                        </span>
+                        <textarea
+                          value={episodeDraft.audioFormatsJson}
+                          onChange={(event) => updateEpisodeDraft({ audioFormatsJson: event.currentTarget.value })}
+                          className="mt-1 min-h-32 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white outline-none"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+
+                  {activeEpisodeTab === "rights" ? (
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Stato pubblicazione
+                        </span>
+                        <select
+                          value={episodeDraft.publicationStatus}
+                          onChange={(event) =>
+                            updateEpisodeDraft({
+                              publicationStatus: event.currentTarget.value as ProgramEpisode["publicationStatus"]
+                            })
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        >
+                          {PUBLICATION_STATUSES.map((statusOption) => (
+                            <option key={statusOption} value={statusOption}>
+                              {statusOption}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Livello accesso
+                        </span>
+                        <select
+                          value={episodeDraft.accessLevel}
+                          onChange={(event) =>
+                            updateEpisodeDraft({
+                              accessLevel: event.currentTarget.value as ProgramEpisode["accessLevel"]
+                            })
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        >
+                          {ACCESS_LEVELS.map((level) => (
+                            <option key={level} value={level}>
+                              {level}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Data pubblicazione
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={episodeDraft.publishAt}
+                          onChange={(event) => updateEpisodeDraft({ publishAt: event.currentTarget.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Scadenza diritti
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={episodeDraft.licensingEnd}
+                          onChange={(event) => updateEpisodeDraft({ licensingEnd: event.currentTarget.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          Restrizioni geografiche JSON
+                        </span>
+                        <textarea
+                          value={episodeDraft.geoRestrictionsJson}
+                          onChange={(event) =>
+                            updateEpisodeDraft({ geoRestrictionsJson: event.currentTarget.value })
+                          }
+                          className="mt-1 min-h-24 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white outline-none"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex min-h-[420px] items-center justify-center rounded-md border border-dashed border-white/10 text-center text-sm text-white/55">
+                  Seleziona una stagione nell'albero per creare o modificare un video.
+                </div>
+              )}
             </section>
           </div>
         </AdminCard>
