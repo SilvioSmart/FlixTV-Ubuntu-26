@@ -149,6 +149,8 @@ model MediaFieldOption {
 
 model ProgramDetail {
   id           String   @id @default(cuid())
+  programCode  String   @default("")
+  seasonCode   String   @default("")
   categoria    String
   programma    String
   serie        String
@@ -161,11 +163,14 @@ model ProgramDetail {
   @@index([categoria])
   @@index([programma])
   @@index([serie])
+  @@index([programCode])
+  @@index([seasonCode])
   @@map("programmi")
 }
 
 model ProgramEpisode {
   id                String        @id @default(cuid())
+  episodeCode       String        @default("")
   seasonId          String
   seriesId          String
   episodeNumber     Int
@@ -193,6 +198,7 @@ model ProgramEpisode {
 
   @@index([seasonId, episodeNumber])
   @@index([seriesId])
+  @@index([episodeCode])
   @@index([publicationStatus])
   @@map("program_episodes")
 }

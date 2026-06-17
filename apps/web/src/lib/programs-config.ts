@@ -1,5 +1,7 @@
 export type ProgramDetail = {
   id?: string;
+  programCode: string;
+  seasonCode: string;
   categoria: string;
   programma: string;
   serie: string;
@@ -9,6 +11,7 @@ export type ProgramDetail = {
 
 export type ProgramEpisode = {
   id?: string;
+  episodeCode: string;
   seasonId: string;
   seriesId: string;
   episodeNumber: number;
@@ -35,6 +38,8 @@ export type ProgramEpisode = {
 export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   {
     id: "default-fuori-corso",
+    programCode: "FRCRS",
+    seasonCode: "FCS01",
     categoria: "Sitcom",
     programma: "Fuori Corso",
     serie: "Fuori Corso",
@@ -43,6 +48,8 @@ export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   },
   {
     id: "default-bed-and-breakfast",
+    programCode: "BDBRK",
+    seasonCode: "BBK01",
     categoria: "Sitcom",
     programma: "Bed&Breakfast",
     serie: "Bed&Breakfast",
@@ -51,6 +58,8 @@ export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   },
   {
     id: "default-tutti-a-casa",
+    programCode: "TTTCS",
+    seasonCode: "TTS01",
     categoria: "Sitcom",
     programma: "Tutti a Casa",
     serie: "Tutti a Casa",
@@ -59,6 +68,8 @@ export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   },
   {
     id: "default-telegaribaldi",
+    programCode: "TLGRB",
+    seasonCode: "TGB26",
     categoria: "News",
     programma: "Telegaribaldi",
     serie: "Edizione quotidiana",
@@ -99,6 +110,43 @@ function normalizeJsonText(value: unknown, fallback: string) {
   }
 }
 
+function normalizeCodeSource(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function twoDigit(value: number) {
+  return Math.max(0, Math.min(99, Math.round(value))).toString().padStart(2, "0");
+}
+
+export function getSeasonNumber(stagione: string) {
+  const matches = stagione.match(/\d+/g);
+  const lastMatch = matches?.at(-1);
+
+  if (!lastMatch) {
+    return 1;
+  }
+
+  return Number(lastMatch.slice(-2)) || 1;
+}
+
+export function generateProgramCode(programma: string) {
+  const consonants = normalizeCodeSource(programma).replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/g, "");
+  return consonants.padEnd(5, "X").slice(0, 5);
+}
+
+export function generateSeasonCode(programCode: string, stagione: string) {
+  const normalizedProgramCode = normalizeCodeSource(programCode).padEnd(5, "X").slice(0, 5);
+  return `${normalizedProgramCode[0]}${normalizedProgramCode[2]}${normalizedProgramCode[4]}S${twoDigit(getSeasonNumber(stagione))}`;
+}
+
+export function generateEpisodeCode(programCode: string, stagione: string, episodeNumber: number) {
+  const normalizedProgramCode = normalizeCodeSource(programCode).padEnd(5, "X").slice(0, 5);
+  return `${normalizedProgramCode[0]}${normalizedProgramCode[4]}${twoDigit(getSeasonNumber(stagione))}${twoDigit(episodeNumber)}`;
+}
+
 export function normalizeProgram(value: unknown): ProgramDetail | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -109,6 +157,7 @@ export function normalizeProgram(value: unknown): ProgramDetail | null {
   const programma = isString(program.programma) ? program.programma.trim() : "";
   const serie = isString(program.serie) ? program.serie.trim() : "";
   const stagione = isString(program.stagione) ? program.stagione.trim() : "";
+  const programCode = generateProgramCode(programma);
 
   if (!categoria || !programma || !serie || !stagione) {
     return null;
@@ -119,6 +168,8 @@ export function normalizeProgram(value: unknown): ProgramDetail | null {
       isString(program.id) && !program.id.startsWith("temp-") && !program.id.startsWith("default-")
         ? program.id
         : undefined,
+    programCode,
+    seasonCode: generateSeasonCode(programCode, stagione),
     categoria,
     programma,
     serie,
@@ -154,8 +205,13 @@ export function createEpisodeDraft(season: ProgramDetail): ProgramEpisode {
 
   return {
     id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    episodeCode: generateEpisodeCode(
+      season.programCode || generateProgramCode(season.programma),
+      season.stagione,
+      1
+    ),
     seasonId,
-    seriesId: season.serie,
+    seriesId: season.seasonCode || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
     episodeNumber: 1,
     productionCode: "",
     title: "",
@@ -209,6 +265,7 @@ export function normalizeEpisode(value: unknown): ProgramEpisode | null {
       isString(episode.id) && !episode.id.startsWith("temp-")
         ? episode.id
         : undefined,
+    episodeCode: isString(episode.episodeCode) ? episode.episodeCode.trim() : "",
     seasonId,
     seriesId,
     episodeNumber: isNumber(episode.episodeNumber)

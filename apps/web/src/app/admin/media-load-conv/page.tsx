@@ -27,6 +27,9 @@ import {
   ACCESS_LEVELS,
   createEpisodeDraft,
   DEFAULT_PROGRAMS,
+  generateEpisodeCode,
+  generateProgramCode,
+  generateSeasonCode,
   MAX_RESOLUTIONS,
   normalizeProgram,
   PUBLICATION_STATUSES,
@@ -36,11 +39,11 @@ import {
 } from "@/lib/programs-config";
 import { buildBackendUrl } from "@/lib/platform-config";
 
-type ActiveSection = "catalog" | "video" | "vast" | "convert" | "config";
+type ActiveSection = "catalog" | "video" | "convert" | "config";
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 type StorageField = keyof MediaConfig["storage"];
 type CatalogNodeType = "category" | "program" | "season";
-type EpisodeTab = "info" | "media" | "technical" | "rights";
+type EpisodeTab = "info" | "media" | "technical" | "rights" | "vast";
 
 type MediaConfigResponse = {
   config?: MediaConfig;
@@ -88,7 +91,6 @@ const SECTION_BUTTONS: Array<{
 }> = [
   { id: "catalog", label: "CATALOGO" },
   { id: "video", label: "VIDEO" },
-  { id: "vast", label: "VAST" },
   { id: "convert", label: "CONVERT" },
   { id: "config", label: "CONFIG" }
 ];
@@ -100,7 +102,8 @@ const EPISODE_TABS: Array<{
   { id: "info", label: "Info generali" },
   { id: "media", label: "Media e video" },
   { id: "technical", label: "Punti e tecnica" },
-  { id: "rights", label: "Regole" }
+  { id: "rights", label: "Regole" },
+  { id: "vast", label: "VAST" }
 ];
 
 const STORAGE_ROWS: Array<{
@@ -117,12 +120,18 @@ function createTempId() {
 }
 
 function createProgram(): ProgramDetail {
+  const programma = "Nuovo programma";
+  const stagione = "Stagione 1";
+  const programCode = generateProgramCode(programma);
+
   return {
     id: createTempId(),
+    programCode,
+    seasonCode: generateSeasonCode(programCode, stagione),
     categoria: "Nuova categoria",
-    programma: "Nuovo programma",
-    serie: "Nuovo programma",
-    stagione: "Stagione 1",
+    programma,
+    serie: programma,
+    stagione,
     numeroPuntate: 0
   };
 }
@@ -281,6 +290,23 @@ export default function MediaLoadConversionPage() {
     () => episodes.find((episode) => episode.id === selectedEpisodeId) ?? null,
     [episodes, selectedEpisodeId]
   );
+  const generatedVideoCodes = useMemo(() => {
+    const programCode = selectedVideoSeason?.programCode ||
+      generateProgramCode(selectedVideoSeason?.programma ?? "");
+    const seasonCode = selectedVideoSeason?.seasonCode ||
+      generateSeasonCode(programCode, selectedVideoSeason?.stagione ?? "Stagione 1");
+    const episodeCode = generateEpisodeCode(
+      programCode,
+      selectedVideoSeason?.stagione ?? "Stagione 1",
+      episodeDraft?.episodeNumber ?? 1
+    );
+
+    return {
+      programCode,
+      seasonCode,
+      episodeCode
+    };
+  }, [episodeDraft?.episodeNumber, selectedVideoSeason]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -683,6 +709,11 @@ export default function MediaLoadConversionPage() {
     const nextEpisode = createEpisodeDraft(selectedVideoSeason);
     const seasonEpisodes = episodes.filter((episode) => episode.seasonId === selectedVideoSeason.id);
     nextEpisode.episodeNumber = seasonEpisodes.length + 1;
+    nextEpisode.episodeCode = generateEpisodeCode(
+      selectedVideoSeason.programCode || generateProgramCode(selectedVideoSeason.programma),
+      selectedVideoSeason.stagione,
+      nextEpisode.episodeNumber
+    );
     setSelectedEpisodeId(nextEpisode.id ?? null);
     setEpisodeDraft(nextEpisode);
     setActiveEpisodeTab("info");
@@ -1361,7 +1392,7 @@ export default function MediaLoadConversionPage() {
                         {episodeDraft.title || "Nuovo video"}
                       </h3>
                       <p className="mt-1 text-sm text-white/55">
-                        ID episodio: {episodeDraft.id?.startsWith("temp-") ? "Autogenerato al salvataggio" : episodeDraft.id}
+                        Record DB: {episodeDraft.id?.startsWith("temp-") ? "Autogenerato al salvataggio" : episodeDraft.id}
                       </p>
                       <p className="mt-1 text-sm text-white/45">
                         ID stagione: {episodeDraft.seasonId} | ID serie: {episodeDraft.seriesId}
@@ -1392,6 +1423,36 @@ export default function MediaLoadConversionPage() {
 
                   {activeEpisodeTab === "info" ? (
                     <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          ID PROGRAMMA
+                        </span>
+                        <input
+                          value={generatedVideoCodes.programCode}
+                          readOnly
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          ID STAGIONE
+                        </span>
+                        <input
+                          value={generatedVideoCodes.seasonCode}
+                          readOnly
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
+                        />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          ID Episodio
+                        </span>
+                        <input
+                          value={generatedVideoCodes.episodeCode}
+                          readOnly
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
+                        />
+                      </label>
                       <label className="block">
                         <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
                           Numero episodio
@@ -1640,6 +1701,63 @@ export default function MediaLoadConversionPage() {
                       </label>
                     </div>
                   ) : null}
+
+                  {activeEpisodeTab === "vast" ? (
+                    <div className="mt-5">
+                      <div className="mb-4 rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
+                        {status === "saving" || status === "loading" ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 size={16} className="animate-spin" />
+                            {message}
+                          </span>
+                        ) : (
+                          message
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 rounded-md border border-white/10 bg-black/25 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto] lg:items-center">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                          VAST URL
+                        </span>
+                        <input
+                          value={vastUrl}
+                          onChange={(event) => updateVastUrl(event.currentTarget.value)}
+                          placeholder="https://adsrv.org/vast.xml"
+                          className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+                        />
+                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                          <button
+                            type="button"
+                            onClick={cancelVastUrl}
+                            title="Annulla"
+                            aria-label="Annulla modifiche VAST URL"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+                          >
+                            <RotateCcw size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearVastUrl}
+                            title="Cancella"
+                            aria-label="Cancella VAST URL"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-red-400/20 text-red-100 transition hover:bg-red-500/15"
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveVastConfig}
+                            disabled={savingVast}
+                            title="Salva"
+                            aria-label="Salva VAST URL"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-black transition hover:bg-white/90 disabled:opacity-40"
+                          >
+                            {savingVast ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <div className="flex min-h-[420px] items-center justify-center rounded-md border border-dashed border-white/10 text-center text-sm text-white/55">
@@ -1647,66 +1765,6 @@ export default function MediaLoadConversionPage() {
                 </div>
               )}
             </section>
-          </div>
-        </AdminCard>
-      ) : null}
-
-      {activeSection === "vast" ? (
-        <AdminCard
-          title="VAST"
-          description="Configurazione dell'endpoint VAST per le inserzioni video."
-        >
-          <div className="mb-4 rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
-            {status === "saving" || status === "loading" ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 size={16} className="animate-spin" />
-                {message}
-              </span>
-            ) : (
-              message
-            )}
-          </div>
-
-          <div className="grid gap-3 rounded-md border border-white/10 bg-black/25 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto] lg:items-center">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
-              VAST URL
-            </span>
-            <input
-              value={vastUrl}
-              onChange={(event) => updateVastUrl(event.currentTarget.value)}
-              placeholder="https://adsrv.org/vast.xml"
-              className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
-            />
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <button
-                type="button"
-                onClick={cancelVastUrl}
-                title="Annulla"
-                aria-label="Annulla modifiche VAST URL"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
-                <RotateCcw size={17} />
-              </button>
-              <button
-                type="button"
-                onClick={clearVastUrl}
-                title="Cancella"
-                aria-label="Cancella VAST URL"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-red-400/20 text-red-100 transition hover:bg-red-500/15"
-              >
-                <Trash2 size={17} />
-              </button>
-              <button
-                type="button"
-                onClick={saveVastConfig}
-                disabled={savingVast}
-                title="Salva"
-                aria-label="Salva VAST URL"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-black transition hover:bg-white/90 disabled:opacity-40"
-              >
-                {savingVast ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
-              </button>
-            </div>
           </div>
         </AdminCard>
       ) : null}

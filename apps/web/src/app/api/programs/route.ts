@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { corsJson, corsOptions } from "@/lib/cors";
 import {
   DEFAULT_PROGRAMS,
+  generateProgramCode,
+  generateSeasonCode,
   normalizeProgram,
   type ProgramDetail
 } from "@/lib/programs-config";
@@ -22,6 +24,8 @@ function isAdminRequest(request: NextRequest) {
 
 function serializeProgram(program: {
   id: string;
+  programCode?: string | null;
+  seasonCode?: string | null;
   categoria: string;
   programma: string;
   serie: string;
@@ -30,6 +34,11 @@ function serializeProgram(program: {
 }): ProgramDetail {
   return {
     id: program.id,
+    programCode: program.programCode || generateProgramCode(program.programma),
+    seasonCode: program.seasonCode || generateSeasonCode(
+      program.programCode || generateProgramCode(program.programma),
+      program.stagione
+    ),
     categoria: program.categoria,
     programma: program.programma,
     serie: program.serie,
@@ -84,6 +93,8 @@ export async function POST(request: NextRequest) {
 
   const createdProgram = await prisma.programDetail.create({
     data: {
+      programCode: program.programCode,
+      seasonCode: program.seasonCode,
       categoria: program.categoria,
       programma: program.programma,
       serie: program.serie,
@@ -117,6 +128,8 @@ export async function PUT(request: NextRequest) {
       id
     },
     data: {
+      programCode: program.programCode,
+      seasonCode: program.seasonCode,
       categoria: program.categoria,
       programma: program.programma,
       serie: program.serie,

@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { corsJson, corsOptions } from "@/lib/cors";
-import { normalizeEpisode, type ProgramEpisode } from "@/lib/programs-config";
+import {
+  generateEpisodeCode,
+  generateProgramCode,
+  normalizeEpisode,
+  type ProgramEpisode
+} from "@/lib/programs-config";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -10,6 +15,7 @@ const ADMIN_COOKIE_NAME = "flixtv_admin_auth";
 
 type StoredEpisode = {
   id: string;
+  episodeCode: string | null;
   seasonId: string;
   seriesId: string;
   episodeNumber: number;
@@ -74,6 +80,7 @@ function nullableDate(value: string) {
 function serializeEpisode(episode: StoredEpisode): ProgramEpisode {
   return {
     id: episode.id,
+    episodeCode: episode.episodeCode ?? "",
     seasonId: episode.seasonId,
     seriesId: episode.seriesId,
     episodeNumber: episode.episodeNumber,
@@ -96,6 +103,22 @@ function serializeEpisode(episode: StoredEpisode): ProgramEpisode {
     geoRestrictionsJson: jsonText(episode.geoRestrictions, "[]"),
     accessLevel: episode.accessLevel as ProgramEpisode["accessLevel"]
   };
+}
+
+async function resolveEpisodeCode(episode: ProgramEpisode) {
+  const season = await prisma.programDetail.findUnique({
+    where: {
+      id: episode.seasonId
+    },
+    select: {
+      programma: true,
+      stagione: true,
+      programCode: true
+    }
+  });
+
+  const programCode = season?.programCode || generateProgramCode(season?.programma ?? episode.seriesId);
+  return generateEpisodeCode(programCode, season?.stagione ?? "Stagione 1", episode.episodeNumber);
 }
 
 function episodeDelegate() {
@@ -150,8 +173,10 @@ export async function POST(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
+  const episodeCode = await resolveEpisodeCode(episode);
   const createdEpisode = await episodeDelegate().create({
     data: {
+      episodeCode,
       seasonId: episode.seasonId,
       seriesId: episode.seriesId,
       episodeNumber: episode.episodeNumber,
@@ -196,11 +221,13 @@ export async function PUT(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
+  const episodeCode = await resolveEpisodeCode(episode);
   const updatedEpisode = await episodeDelegate().update({
     where: {
       id
     },
     data: {
+      episodeCode,
       seasonId: episode.seasonId,
       seriesId: episode.seriesId,
       episodeNumber: episode.episodeNumber,
