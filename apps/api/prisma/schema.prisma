@@ -122,6 +122,15 @@ model MediaStorageConfig {
   @@map("media_config")
 }
 
+model VastConfig {
+  id        String   @id @default("default")
+  vastUrl   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vast_config")
+}
+
 model MediaFieldOption {
   id        String   @id @default(cuid())
   fieldName String

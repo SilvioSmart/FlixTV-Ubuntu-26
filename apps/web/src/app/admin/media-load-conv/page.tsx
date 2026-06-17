@@ -36,7 +36,7 @@ import {
 } from "@/lib/programs-config";
 import { buildBackendUrl } from "@/lib/platform-config";
 
-type ActiveSection = "catalog" | "video" | "convert" | "config";
+type ActiveSection = "catalog" | "video" | "vast" | "convert" | "config";
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 type StorageField = keyof MediaConfig["storage"];
 type CatalogNodeType = "category" | "program" | "season";
@@ -56,6 +56,13 @@ type ProgramsResponse = {
 type EpisodesResponse = {
   episodes?: ProgramEpisode[];
   episode?: ProgramEpisode;
+  error?: string;
+};
+
+type VastConfigResponse = {
+  config?: {
+    vastUrl?: string;
+  };
   error?: string;
 };
 
@@ -81,6 +88,7 @@ const SECTION_BUTTONS: Array<{
 }> = [
   { id: "catalog", label: "CATALOGO" },
   { id: "video", label: "VIDEO" },
+  { id: "vast", label: "VAST" },
   { id: "convert", label: "CONVERT" },
   { id: "config", label: "CONFIG" }
 ];
@@ -212,10 +220,13 @@ export default function MediaLoadConversionPage() {
     DEFAULT_PROGRAMS[0] ? createEpisodeDraft(DEFAULT_PROGRAMS[0]) : null
   );
   const [activeEpisodeTab, setActiveEpisodeTab] = useState<EpisodeTab>("info");
+  const [vastUrl, setVastUrl] = useState("https://adsrv.org/vast.xml");
+  const [savedVastUrl, setSavedVastUrl] = useState("https://adsrv.org/vast.xml");
   const [status, setStatus] = useState<SaveStatus>("loading");
   const [message, setMessage] = useState("Caricamento configurazione media.");
   const [savingCatalog, setSavingCatalog] = useState(false);
   const [savingEpisode, setSavingEpisode] = useState(false);
+  const [savingVast, setSavingVast] = useState(false);
 
   const categoriaOptions = useMemo(() => uniqueValues(programs, "categoria"), [programs]);
   const catalogTree = useMemo(() => {
@@ -276,7 +287,7 @@ export default function MediaLoadConversionPage() {
 
     async function loadData() {
       try {
-        const [configResponse, programsResponse, episodesResponse] = await Promise.all([
+        const [configResponse, programsResponse, episodesResponse, vastResponse] = await Promise.all([
           fetch(buildBackendUrl("/api/media-config"), {
             credentials: "include",
             signal: controller.signal
@@ -286,6 +297,10 @@ export default function MediaLoadConversionPage() {
             signal: controller.signal
           }),
           fetch(buildBackendUrl("/api/program-episodes"), {
+            credentials: "include",
+            signal: controller.signal
+          }),
+          fetch(buildBackendUrl("/api/vast-config"), {
             credentials: "include",
             signal: controller.signal
           })
@@ -318,6 +333,13 @@ export default function MediaLoadConversionPage() {
         if (episodesResponse.ok) {
           const episodesData = (await episodesResponse.json()) as EpisodesResponse;
           setEpisodes(Array.isArray(episodesData.episodes) ? episodesData.episodes : []);
+        }
+
+        if (vastResponse.ok) {
+          const vastData = (await vastResponse.json()) as VastConfigResponse;
+          const loadedVastUrl = vastData.config?.vastUrl || "https://adsrv.org/vast.xml";
+          setVastUrl(loadedVastUrl);
+          setSavedVastUrl(loadedVastUrl);
         }
 
         setStatus("idle");
@@ -581,6 +603,10 @@ export default function MediaLoadConversionPage() {
       return;
     }
 
+    if (!window.confirm("Confermi la cancellazione della voce catalogo selezionata?")) {
+      return;
+    }
+
     setSavingCatalog(true);
     setStatus("saving");
     setMessage("Cancellazione catalogo in corso.");
@@ -728,9 +754,17 @@ export default function MediaLoadConversionPage() {
 
   async function deleteEpisode() {
     if (!episodeDraft?.id || episodeDraft.id.startsWith("temp-")) {
+      if (!window.confirm("Confermi l'annullamento del nuovo video non salvato?")) {
+        return;
+      }
+
       if (selectedVideoSeason) {
         selectVideoSeason(selectedVideoSeason);
       }
+      return;
+    }
+
+    if (!window.confirm("Confermi la cancellazione del video selezionato?")) {
       return;
     }
 
@@ -766,6 +800,59 @@ export default function MediaLoadConversionPage() {
       setMessage(error instanceof Error ? error.message : "Cancellazione video non riuscita.");
     } finally {
       setSavingEpisode(false);
+    }
+  }
+
+  function updateVastUrl(value: string) {
+    setVastUrl(value);
+    setMessage("Modifiche VAST in bozza.");
+  }
+
+  function cancelVastUrl() {
+    setVastUrl(savedVastUrl);
+    setMessage("Modifiche VAST annullate.");
+  }
+
+  function clearVastUrl() {
+    if (!window.confirm("Confermi la cancellazione del VAST URL?")) {
+      return;
+    }
+
+    setVastUrl("");
+    setMessage("VAST URL cancellato in bozza.");
+  }
+
+  async function saveVastConfig() {
+    setSavingVast(true);
+    setStatus("saving");
+    setMessage("Salvataggio VAST URL in corso.");
+
+    try {
+      const response = await fetch(buildBackendUrl("/api/vast-config"), {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          vastUrl
+        })
+      });
+      const data = (await response.json()) as VastConfigResponse;
+
+      if (!response.ok || typeof data.config?.vastUrl !== "string") {
+        throw new Error(data.error || "Salvataggio VAST URL non riuscito.");
+      }
+
+      setVastUrl(data.config.vastUrl);
+      setSavedVastUrl(data.config.vastUrl);
+      setStatus("saved");
+      setMessage("VAST URL salvato.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Salvataggio VAST URL non riuscito.");
+    } finally {
+      setSavingVast(false);
     }
   }
 
@@ -1560,6 +1647,66 @@ export default function MediaLoadConversionPage() {
                 </div>
               )}
             </section>
+          </div>
+        </AdminCard>
+      ) : null}
+
+      {activeSection === "vast" ? (
+        <AdminCard
+          title="VAST"
+          description="Configurazione dell'endpoint VAST per le inserzioni video."
+        >
+          <div className="mb-4 rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
+            {status === "saving" || status === "loading" ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                {message}
+              </span>
+            ) : (
+              message
+            )}
+          </div>
+
+          <div className="grid gap-3 rounded-md border border-white/10 bg-black/25 p-4 lg:grid-cols-[180px_minmax(0,1fr)_auto] lg:items-center">
+            <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+              VAST URL
+            </span>
+            <input
+              value={vastUrl}
+              onChange={(event) => updateVastUrl(event.currentTarget.value)}
+              placeholder="https://adsrv.org/vast.xml"
+              className="h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
+            />
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={cancelVastUrl}
+                title="Annulla"
+                aria-label="Annulla modifiche VAST URL"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <RotateCcw size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={clearVastUrl}
+                title="Cancella"
+                aria-label="Cancella VAST URL"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-red-400/20 text-red-100 transition hover:bg-red-500/15"
+              >
+                <Trash2 size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={saveVastConfig}
+                disabled={savingVast}
+                title="Salva"
+                aria-label="Salva VAST URL"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-black transition hover:bg-white/90 disabled:opacity-40"
+              >
+                {savingVast ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
+              </button>
+            </div>
           </div>
         </AdminCard>
       ) : null}
