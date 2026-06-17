@@ -37,6 +37,11 @@ type StoredEpisode = {
   licensingEnd: Date | string | null;
   geoRestrictions: unknown;
   accessLevel: string;
+  season?: {
+    programma: string;
+    stagione: string;
+    programCode: string;
+  };
 };
 
 function getAdminToken() {
@@ -142,6 +147,15 @@ export async function GET(request: NextRequest) {
     const where = seasonId ? { seasonId } : undefined;
     const episodes = await episodeDelegate().findMany({
       where,
+      include: {
+        season: {
+          select: {
+            programma: true,
+            stagione: true,
+            programCode: true
+          }
+        }
+      },
       orderBy: [
         {
           episodeNumber: "asc"
@@ -151,9 +165,36 @@ export async function GET(request: NextRequest) {
         }
       ]
     }) as StoredEpisode[];
+    const normalizedEpisodes = await Promise.all(
+      episodes.map(async (episode) => {
+        const programCode = episode.season?.programCode ||
+          generateProgramCode(episode.season?.programma ?? episode.seriesId);
+        const episodeCode = generateEpisodeCode(
+          programCode,
+          episode.season?.stagione ?? "Stagione 1",
+          episode.episodeNumber
+        );
+
+        if (episode.episodeCode !== episodeCode) {
+          await episodeDelegate().update({
+            where: {
+              id: episode.id
+            },
+            data: {
+              episodeCode
+            }
+          });
+        }
+
+        return {
+          ...episode,
+          episodeCode
+        };
+      })
+    );
 
     return corsJson(request, {
-      episodes: episodes.map(serializeEpisode)
+      episodes: normalizedEpisodes.map(serializeEpisode)
     });
   } catch {
     return corsJson(request, {

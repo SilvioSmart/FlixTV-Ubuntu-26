@@ -170,7 +170,7 @@ model ProgramDetail {
 
 model ProgramEpisode {
   id                String        @id @default(cuid())
-  episodeCode       String        @default("")
+  episodeCode       String        @default("") @db.VarChar(6)
   seasonId          String
   seriesId          String
   episodeNumber     Int
