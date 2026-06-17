@@ -7,6 +7,31 @@ export type ProgramDetail = {
   numeroPuntate: number;
 };
 
+export type ProgramEpisode = {
+  id?: string;
+  seasonId: string;
+  seriesId: string;
+  episodeNumber: number;
+  productionCode: string;
+  title: string;
+  shortPlot: string;
+  longPlot: string;
+  thumbnailUrl: string;
+  mezzanineFileUrl: string;
+  trailerUrl: string;
+  subtitlesJson: string;
+  audioTracksJson: string;
+  duration: number;
+  cuePointsJson: string;
+  maxResolution: "SD" | "HD" | "FHD" | "4K";
+  audioFormatsJson: string;
+  publicationStatus: "Draft" | "Scheduled" | "Published" | "Archived";
+  publishAt: string;
+  licensingEnd: string;
+  geoRestrictionsJson: string;
+  accessLevel: "Free" | "Registered" | "Premium" | "TVOD";
+};
+
 export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   {
     id: "default-fuori-corso",
@@ -42,12 +67,36 @@ export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   }
 ];
 
+export const EMPTY_EPISODE_JSON = {
+  subtitlesJson: '[{"lang":"it","url":""}]',
+  audioTracksJson: '[{"lang":"it","trackId":""}]',
+  cuePointsJson: '{"intro_start":0,"intro_end":0,"credits_start":0}',
+  audioFormatsJson: '["Stereo 2.0"]',
+  geoRestrictionsJson: '[]'
+};
+
+export const MAX_RESOLUTIONS = ["SD", "HD", "FHD", "4K"] as const;
+export const PUBLICATION_STATUSES = ["Draft", "Scheduled", "Published", "Archived"] as const;
+export const ACCESS_LEVELS = ["Free", "Registered", "Premium", "TVOD"] as const;
+
 function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeJsonText(value: unknown, fallback: string) {
+  if (!isString(value)) {
+    return fallback;
+  }
+
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return fallback;
+  }
 }
 
 export function normalizeProgram(value: unknown): ProgramDetail | null {
@@ -98,4 +147,93 @@ export function uniqueValues(programs: ProgramDetail[], key: keyof ProgramDetail
         .filter((value): value is string => typeof value === "string" && value.length > 0)
     )
   ).sort((firstValue, secondValue) => firstValue.localeCompare(secondValue));
+}
+
+export function createEpisodeDraft(season: ProgramDetail): ProgramEpisode {
+  const seasonId = season.id ?? `${season.categoria}-${season.serie}-${season.stagione}`;
+
+  return {
+    id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    seasonId,
+    seriesId: season.serie,
+    episodeNumber: 1,
+    productionCode: "",
+    title: "",
+    shortPlot: "",
+    longPlot: "",
+    thumbnailUrl: "",
+    mezzanineFileUrl: "",
+    trailerUrl: "",
+    subtitlesJson: EMPTY_EPISODE_JSON.subtitlesJson,
+    audioTracksJson: EMPTY_EPISODE_JSON.audioTracksJson,
+    duration: 0,
+    cuePointsJson: EMPTY_EPISODE_JSON.cuePointsJson,
+    maxResolution: "FHD",
+    audioFormatsJson: EMPTY_EPISODE_JSON.audioFormatsJson,
+    publicationStatus: "Draft",
+    publishAt: "",
+    licensingEnd: "",
+    geoRestrictionsJson: EMPTY_EPISODE_JSON.geoRestrictionsJson,
+    accessLevel: "Free"
+  };
+}
+
+export function normalizeEpisode(value: unknown): ProgramEpisode | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const episode = value as Partial<ProgramEpisode>;
+  const seasonId = isString(episode.seasonId) ? episode.seasonId.trim() : "";
+  const seriesId = isString(episode.seriesId) ? episode.seriesId.trim() : "";
+  const title = isString(episode.title) ? episode.title.trim().slice(0, 150) : "";
+  const shortPlot = isString(episode.shortPlot) ? episode.shortPlot.trim().slice(0, 250) : "";
+  const maxResolution = MAX_RESOLUTIONS.includes(episode.maxResolution as typeof MAX_RESOLUTIONS[number])
+    ? episode.maxResolution as ProgramEpisode["maxResolution"]
+    : "FHD";
+  const publicationStatus = PUBLICATION_STATUSES.includes(
+    episode.publicationStatus as typeof PUBLICATION_STATUSES[number]
+  )
+    ? episode.publicationStatus as ProgramEpisode["publicationStatus"]
+    : "Draft";
+  const accessLevel = ACCESS_LEVELS.includes(episode.accessLevel as typeof ACCESS_LEVELS[number])
+    ? episode.accessLevel as ProgramEpisode["accessLevel"]
+    : "Free";
+
+  if (!seasonId || !seriesId || !title) {
+    return null;
+  }
+
+  return {
+    id:
+      isString(episode.id) && !episode.id.startsWith("temp-")
+        ? episode.id
+        : undefined,
+    seasonId,
+    seriesId,
+    episodeNumber: isNumber(episode.episodeNumber)
+      ? Math.max(1, Math.round(episode.episodeNumber))
+      : 1,
+    productionCode: isString(episode.productionCode) ? episode.productionCode.trim() : "",
+    title,
+    shortPlot,
+    longPlot: isString(episode.longPlot) ? episode.longPlot.trim() : "",
+    thumbnailUrl: isString(episode.thumbnailUrl) ? episode.thumbnailUrl.trim() : "",
+    mezzanineFileUrl: isString(episode.mezzanineFileUrl) ? episode.mezzanineFileUrl.trim() : "",
+    trailerUrl: isString(episode.trailerUrl) ? episode.trailerUrl.trim() : "",
+    subtitlesJson: normalizeJsonText(episode.subtitlesJson, EMPTY_EPISODE_JSON.subtitlesJson),
+    audioTracksJson: normalizeJsonText(episode.audioTracksJson, EMPTY_EPISODE_JSON.audioTracksJson),
+    duration: isNumber(episode.duration) ? Math.max(0, Math.round(episode.duration)) : 0,
+    cuePointsJson: normalizeJsonText(episode.cuePointsJson, EMPTY_EPISODE_JSON.cuePointsJson),
+    maxResolution,
+    audioFormatsJson: normalizeJsonText(episode.audioFormatsJson, EMPTY_EPISODE_JSON.audioFormatsJson),
+    publicationStatus,
+    publishAt: isString(episode.publishAt) ? episode.publishAt : "",
+    licensingEnd: isString(episode.licensingEnd) ? episode.licensingEnd : "",
+    geoRestrictionsJson: normalizeJsonText(
+      episode.geoRestrictionsJson,
+      EMPTY_EPISODE_JSON.geoRestrictionsJson
+    ),
+    accessLevel
+  };
 }

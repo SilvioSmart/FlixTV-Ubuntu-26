@@ -145,6 +145,7 @@ model ProgramDetail {
   serie        String
   stagione     String
   numeroPuntate Int     @default(0)
+  episodes      ProgramEpisode[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -152,6 +153,39 @@ model ProgramDetail {
   @@index([programma])
   @@index([serie])
   @@map("programmi")
+}
+
+model ProgramEpisode {
+  id                String        @id @default(cuid())
+  seasonId          String
+  seriesId          String
+  episodeNumber     Int
+  productionCode    String?
+  title             String        @db.VarChar(150)
+  shortPlot         String?       @db.VarChar(250)
+  longPlot          String?       @db.Text
+  thumbnailUrl      String?
+  mezzanineFileUrl  String?
+  trailerUrl        String?
+  subtitles         Json          @default("[]")
+  audioTracks       Json          @default("[]")
+  duration          Int           @default(0)
+  cuePoints         Json          @default("{}")
+  maxResolution     String        @default("FHD")
+  audioFormats      Json          @default("[]")
+  publicationStatus String        @default("Draft")
+  publishAt         DateTime?
+  licensingEnd      DateTime?
+  geoRestrictions   Json          @default("[]")
+  accessLevel       String        @default("Free")
+  season            ProgramDetail @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([seasonId, episodeNumber])
+  @@index([seriesId])
+  @@index([publicationStatus])
+  @@map("program_episodes")
 }
 
 model LiveChannel {
