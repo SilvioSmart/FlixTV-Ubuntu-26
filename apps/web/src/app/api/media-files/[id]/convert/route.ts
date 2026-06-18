@@ -220,6 +220,10 @@ async function startConversion(id: string) {
       windowsHide: true
     }
   );
+  await new Promise<void>((resolve, reject) => {
+    ffmpeg.once("spawn", resolve);
+    ffmpeg.once("error", reject);
+  });
   startingConversions.delete(id);
   activeConversions.set(id, ffmpeg);
 
@@ -355,23 +359,38 @@ export async function POST(
 
   cancelledConversions.delete(id);
   startingConversions.add(id);
-  void startConversion(id).catch((error) => {
+
+  try {
+    await startConversion(id);
+  } catch (error) {
     startingConversions.delete(id);
     activeConversions.delete(id);
-    void prisma.mediaAsset.update({
+    const conversionError = error instanceof Error ? error.message : "Conversion failed";
+
+    await prisma.mediaAsset.update({
       where: {
         id
       },
       data: {
         conversionStatus: "error",
-        conversionError: error instanceof Error ? error.message : "Conversion failed"
+        conversionError
       }
     });
-  });
+
+    return corsJson(
+      request,
+      {
+        error: `FFmpeg non avviato: ${conversionError}`
+      },
+      {
+        status: 500
+      }
+    );
+  }
 
   return corsJson(request, {
     ok: true,
-    status: "queued"
+    status: "converting"
   });
 }
 
