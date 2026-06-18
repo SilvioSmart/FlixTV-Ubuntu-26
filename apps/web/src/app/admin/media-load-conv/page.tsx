@@ -5,9 +5,11 @@ import {
   ChevronDown,
   ChevronRight,
   Clapperboard,
+  Captions,
   FileVideo,
   FolderCog,
   FolderOpen,
+  Image as ImageIcon,
   Layers,
   Loader2,
   Pencil,
@@ -40,11 +42,12 @@ import {
 } from "@/lib/programs-config";
 import { buildBackendUrl } from "@/lib/platform-config";
 
-type ActiveSection = "catalog" | "video" | "convert" | "config";
+type ActiveSection = "catalog" | "video" | "mediaLoad" | "config";
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 type StorageField = keyof MediaConfig["storage"];
 type CatalogNodeType = "category" | "program" | "season";
 type EpisodeTab = "info" | "media" | "technical" | "rights" | "vast";
+type MediaFolder = "video" | "thumbnail" | "subtitles";
 
 type MediaConfigResponse = {
   config?: MediaConfig;
@@ -93,7 +96,7 @@ const SECTION_BUTTONS: Array<{
 }> = [
   { id: "catalog", label: "CATALOGO" },
   { id: "video", label: "VIDEO" },
-  { id: "convert", label: "CONVERT" },
+  { id: "mediaLoad", label: "MEDIA/LOAD" },
   { id: "config", label: "CONFIG" }
 ];
 
@@ -114,7 +117,38 @@ const STORAGE_ROWS: Array<{
 }> = [
   { field: "uploadPath", label: "File media caricati" },
   { field: "convertedPath", label: "File media convertiti" },
-  { field: "thumbnailPath", label: "File thumbnail" }
+  { field: "thumbnailPath", label: "File thumbnail" },
+  { field: "subtitlesPath", label: "File sottotitoli" }
+];
+
+const MEDIA_FOLDERS: Array<{
+  id: MediaFolder;
+  label: string;
+  storageField: StorageField;
+  accept: string;
+  hint: string;
+}> = [
+  {
+    id: "video",
+    label: "VIDEO",
+    storageField: "uploadPath",
+    accept: "video/*",
+    hint: "MP4, MOV, MXF o file mezzanine"
+  },
+  {
+    id: "thumbnail",
+    label: "THUMBNAIL",
+    storageField: "thumbnailPath",
+    accept: "image/jpeg,image/png,image/webp",
+    hint: "JPG, PNG o WEBP in formato 16:9"
+  },
+  {
+    id: "subtitles",
+    label: "SOTTOTITOLI",
+    storageField: "subtitlesPath",
+    accept: ".vtt,.srt,text/vtt,application/x-subrip",
+    hint: "File VTT o SRT"
+  }
 ];
 
 function createTempId() {
@@ -208,6 +242,7 @@ function createDraftFromSelection(
 
 export default function MediaLoadConversionPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("catalog");
+  const [selectedMediaFolder, setSelectedMediaFolder] = useState<MediaFolder>("video");
   const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<MediaConfig>(DEFAULT_MEDIA_CONFIG);
   const [savedStorage, setSavedStorage] = useState<MediaConfig["storage"]>(
@@ -295,6 +330,8 @@ export default function MediaLoadConversionPage() {
     () => episodes.find((episode) => episode.id === selectedEpisodeId) ?? null,
     [episodes, selectedEpisodeId]
   );
+  const activeMediaFolder = MEDIA_FOLDERS.find((folder) => folder.id === selectedMediaFolder) ??
+    MEDIA_FOLDERS[0]!;
   const generatedVideoCodes = useMemo(() => {
     const programCode = selectedVideoSeason?.IDprogramma ||
       generateProgramCode(selectedVideoSeason?.programma ?? "");
@@ -935,7 +972,7 @@ export default function MediaLoadConversionPage() {
   return (
     <AdminShell
       title="media load/conv"
-      description="Gestione catalogo, conversione HLS e configurazione storage/server."
+      description="Gestione catalogo, caricamento media e configurazione storage/server."
     >
       <div className="mb-5 flex flex-wrap gap-2">
         {SECTION_BUTTONS.map((section) => {
@@ -1815,38 +1852,105 @@ export default function MediaLoadConversionPage() {
         </AdminCard>
       ) : null}
 
-      {activeSection === "convert" ? (
-        <AdminCard title="Conversione HLS" description={`Output HLS: ${config.storage.convertedPath}`}>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div>
-              <div className="flex flex-wrap items-center gap-4">
+      {activeSection === "mediaLoad" ? (
+        <AdminCard
+          title="MEDIA/LOAD"
+          description="Caricamento organizzato per tipologia di contenuto."
+        >
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            {MEDIA_FOLDERS.map((folder) => {
+              const isSelected = selectedMediaFolder === folder.id;
+
+              return (
                 <button
+                  key={folder.id}
                   type="button"
-                  onClick={simulateConversion}
-                  className="inline-flex h-11 items-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black"
+                  onClick={() => setSelectedMediaFolder(folder.id)}
+                  className="flex min-h-24 items-center gap-3 rounded-md border p-4 text-left transition"
+                  style={{
+                    borderColor: isSelected ? "#ffffff" : "rgba(255,255,255,0.1)",
+                    backgroundColor: isSelected ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.28)",
+                    color: isSelected ? "#ffffff" : "rgba(255,255,255,0.65)"
+                  }}
                 >
-                  <FileVideo size={18} />
-                  Avvia conversione
+                  {folder.id === "video" ? <FileVideo size={24} /> : null}
+                  {folder.id === "thumbnail" ? <ImageIcon size={24} /> : null}
+                  {folder.id === "subtitles" ? <Captions size={24} /> : null}
+                  <span>
+                    <span className="block text-sm font-black uppercase tracking-[0.12em]">
+                      {folder.label}
+                    </span>
+                    <span className="mt-1 block text-xs text-white/45">
+                      {config.storage[folder.storageField]}
+                    </span>
+                  </span>
                 </button>
-                <span className="text-sm font-bold text-white/60">{progress}%</span>
-              </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-stream-red transition-[width] duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div>
+              <label className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-white/20 bg-black/35 p-8 text-center transition hover:bg-white/[0.04]">
+                {selectedMediaFolder === "video" ? <FileVideo size={42} className="text-white/55" /> : null}
+                {selectedMediaFolder === "thumbnail" ? <ImageIcon size={42} className="text-white/55" /> : null}
+                {selectedMediaFolder === "subtitles" ? <Captions size={42} className="text-white/55" /> : null}
+                <span className="mt-4 text-lg font-black text-white">
+                  Carica {activeMediaFolder.label.toLowerCase()}
+                </span>
+                <span className="mt-2 text-sm text-white/55">{activeMediaFolder.hint}</span>
+                <span className="mt-3 text-xs text-white/35">
+                  Destinazione: {config.storage[activeMediaFolder.storageField]}
+                </span>
+                <input type="file" accept={activeMediaFolder.accept} className="sr-only" />
+              </label>
+
+              {selectedMediaFolder === "video" ? (
+                <div className="mt-5 rounded-md border border-white/10 bg-black/30 p-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={simulateConversion}
+                      className="inline-flex h-11 items-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black"
+                    >
+                      <FileVideo size={18} />
+                      Avvia conversione HLS
+                    </button>
+                    <span className="text-sm font-bold text-white/60">{progress}%</span>
+                  </div>
+                  <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-stream-red transition-[width] duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
+
             <div className="rounded-md border border-white/10 bg-black/35 p-4">
               <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-white">
                 <FolderCog size={18} />
-                Cartelle pipeline
+                Cartella selezionata
               </div>
-              <div className="mt-3 space-y-2 text-sm leading-6 text-white/60">
-                <p>Upload: {config.storage.uploadPath}</p>
-                <p>HLS: {config.storage.convertedPath}</p>
-                <p>Thumbnail: {config.storage.thumbnailPath}</p>
+              <div className="mt-4 rounded-md border border-white/10 bg-black/40 p-3">
+                <div className="text-xs font-black uppercase tracking-[0.12em] text-white/40">
+                  {activeMediaFolder.label}
+                </div>
+                <p className="mt-2 break-all text-sm leading-6 text-white/75">
+                  {config.storage[activeMediaFolder.storageField]}
+                </p>
               </div>
+              {selectedMediaFolder === "video" ? (
+                <div className="mt-3 rounded-md border border-white/10 bg-black/40 p-3">
+                  <div className="text-xs font-black uppercase tracking-[0.12em] text-white/40">
+                    Output HLS
+                  </div>
+                  <p className="mt-2 break-all text-sm leading-6 text-white/75">
+                    {config.storage.convertedPath}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </AdminCard>
@@ -1856,7 +1960,7 @@ export default function MediaLoadConversionPage() {
         <div className="space-y-5">
           <AdminCard
             title="STORAGE/SERVER"
-            description="Percorsi server usati per media sorgente, media convertiti e thumbnail."
+            description="Percorsi server usati per video, media convertiti, thumbnail e sottotitoli."
           >
             <div className="mb-4 rounded-md border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white/65">
               {status === "saving" || status === "loading" ? (

@@ -116,6 +116,7 @@ model MediaStorageConfig {
   uploadPath    String
   convertedPath String
   thumbnailPath String
+  subtitlesPath String   @default("/var/www/flixtv/storage/media/subtitles")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
           ? {
               uploadPath: storage.uploadPath,
               convertedPath: storage.convertedPath,
-              thumbnailPath: storage.thumbnailPath
+              thumbnailPath: storage.thumbnailPath,
+              subtitlesPath: storage.subtitlesPath
             }
           : DEFAULT_MEDIA_CONFIG.storage,
         fieldOptions:
@@ -121,12 +122,14 @@ export async function PUT(request: NextRequest) {
         id: CONFIG_ID,
         uploadPath: config.storage.uploadPath,
         convertedPath: config.storage.convertedPath,
-        thumbnailPath: config.storage.thumbnailPath
+        thumbnailPath: config.storage.thumbnailPath,
+        subtitlesPath: config.storage.subtitlesPath
       },
       update: {
         uploadPath: config.storage.uploadPath,
         convertedPath: config.storage.convertedPath,
-        thumbnailPath: config.storage.thumbnailPath
+        thumbnailPath: config.storage.thumbnailPath,
+        subtitlesPath: config.storage.subtitlesPath
       }
     });
 

@@ -2,6 +2,7 @@ export type MediaStorageConfig = {
   uploadPath: string;
   convertedPath: string;
   thumbnailPath: string;
+  subtitlesPath: string;
 };
 
 export type MediaFieldOption = {
@@ -45,7 +46,8 @@ export const DEFAULT_MEDIA_CONFIG: MediaConfig = {
   storage: {
     uploadPath: "/var/www/flixtv/storage/media/uploaded",
     convertedPath: "/var/www/flixtv/storage/media/hls",
-    thumbnailPath: "/var/www/flixtv/storage/media/thumbnails"
+    thumbnailPath: "/var/www/flixtv/storage/media/thumbnails",
+    subtitlesPath: "/var/www/flixtv/storage/media/subtitles"
   },
   fieldOptions: [
     {
@@ -185,6 +187,10 @@ export function normalizeMediaConfig(value: unknown): MediaConfig {
       thumbnailPath: normalizePath(
         storage.thumbnailPath,
         DEFAULT_MEDIA_CONFIG.storage.thumbnailPath
+      ),
+      subtitlesPath: normalizePath(
+        storage.subtitlesPath,
+        DEFAULT_MEDIA_CONFIG.storage.subtitlesPath
       )
     },
     fieldOptions
