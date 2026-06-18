@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent
+} from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -231,6 +239,51 @@ function getInitialSelection(programs: ProgramDetail[]): CatalogSelection | null
   };
 }
 
+function formatVideoDuration(durationSeconds: number | null, frameRate: number | null) {
+  if (durationSeconds === null || !Number.isFinite(durationSeconds)) {
+    return "--:--:--:--";
+  }
+
+  const wholeSeconds = Math.floor(durationSeconds);
+  const hours = Math.floor(wholeSeconds / 3600);
+  const minutes = Math.floor((wholeSeconds % 3600) / 60);
+  const seconds = wholeSeconds % 60;
+  const framesPerSecond = frameRate && frameRate > 0 ? frameRate : 25;
+  const frames = Math.floor((durationSeconds - wholeSeconds) * framesPerSecond);
+
+  return [hours, minutes, seconds, frames]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
+function getVideoQuality(asset: MediaAsset) {
+  if (!asset.width || !asset.height) {
+    return "Non rilevata";
+  }
+
+  const quality = asset.height >= 2160
+    ? "UHD 4K"
+    : asset.height >= 1080
+      ? "Full HD"
+      : asset.height >= 720
+        ? "HD"
+        : "SD";
+
+  return `${quality} · ${asset.width}×${asset.height}`;
+}
+
+function getAudioDescription(asset: MediaAsset) {
+  if (asset.audioTracks.length === 0) {
+    return "Nessuna traccia";
+  }
+
+  const formats = Array.from(
+    new Set(asset.audioTracks.map((track) => track.codec.toUpperCase()))
+  ).join(", ");
+
+  return `${asset.audioTracks.length} ${asset.audioTracks.length === 1 ? "traccia" : "tracce"} · ${formats}`;
+}
+
 function createDraftFromSelection(
   selection: CatalogSelection | null,
   programs: ProgramDetail[]
@@ -398,6 +451,32 @@ export default function MediaLoadConversionPage() {
     };
   }, [episodeDraft?.episodeNumber, selectedVideoSeason]);
 
+  const loadMediaAssets = useCallback(async (mediaType: MediaFolder) => {
+    setLoadingMediaAssets(true);
+
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/media-files?mediaType=${encodeURIComponent(mediaType)}`),
+        {
+          credentials: "include",
+          cache: "no-store"
+        }
+      );
+      const data = (await response.json()) as MediaAssetsResponse;
+
+      if (!response.ok) {
+        throw new Error(data.error || "Caricamento elenco media non riuscito.");
+      }
+
+      setMediaAssets(Array.isArray(data.assets) ? data.assets : []);
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Caricamento elenco media non riuscito.");
+    } finally {
+      setLoadingMediaAssets(false);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -479,18 +558,182 @@ export default function MediaLoadConversionPage() {
     return () => controller.abort();
   }, []);
 
-  function simulateConversion() {
-    setProgress(0);
+  useEffect(() => {
+    setDestinationPath(config.storage[activeMediaFolder.storageField]);
+  }, [activeMediaFolder.storageField, config.storage]);
+
+  useEffect(() => {
+    if (activeSection !== "mediaLoad") {
+      return;
+    }
+
+    void loadMediaAssets(selectedMediaFolder);
+  }, [activeSection, loadMediaAssets, selectedMediaFolder]);
+
+  useEffect(() => {
+    if (
+      activeSection !== "mediaLoad" ||
+      !mediaAssets.some((asset) => ["queued", "converting"].includes(asset.conversionStatus))
+    ) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
-      setProgress((currentProgress) => {
-        if (currentProgress >= 100) {
-          window.clearInterval(intervalId);
-          return 100;
+      void loadMediaAssets(selectedMediaFolder);
+    }, 1500);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeSection, loadMediaAssets, mediaAssets, selectedMediaFolder]);
+
+  async function uploadMediaFiles(files: FileList | File[]) {
+    const selectedFiles = Array.from(files);
+
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    setUploadingMedia(true);
+    setStatus("saving");
+    setMessage(
+      selectedFiles.length === 1
+        ? "Caricamento file in corso."
+        : `Caricamento di ${selectedFiles.length} file in corso.`
+    );
+
+    try {
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("mediaType", selectedMediaFolder);
+        formData.append("destinationPath", destinationPath);
+
+        const response = await fetch(buildBackendUrl("/api/media-files"), {
+          method: "POST",
+          credentials: "include",
+          body: formData
+        });
+        const data = (await response.json()) as MediaAssetsResponse;
+
+        if (!response.ok || !data.asset) {
+          throw new Error(data.error || `Caricamento di ${file.name} non riuscito.`);
         }
 
-        return currentProgress + 10;
-      });
-    }, 260);
+        setMediaAssets((currentAssets) => [
+          data.asset as MediaAsset,
+          ...currentAssets.filter((asset) => asset.id !== data.asset?.id)
+        ]);
+      }
+
+      setStatus("saved");
+      setMessage(
+        selectedFiles.length === 1
+          ? "File caricato e analizzato."
+          : `${selectedFiles.length} file caricati e analizzati.`
+      );
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Caricamento file non riuscito.");
+    } finally {
+      setUploadingMedia(false);
+
+      if (mediaFileInputRef.current) {
+        mediaFileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleMediaFileSelection(event: ChangeEvent<HTMLInputElement>) {
+    if (event.currentTarget.files) {
+      void uploadMediaFiles(event.currentTarget.files);
+    }
+  }
+
+  function handleMediaDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingMedia(false);
+
+    if (!uploadingMedia && event.dataTransfer.files.length > 0) {
+      void uploadMediaFiles(event.dataTransfer.files);
+    }
+  }
+
+  function browseDestinationPath() {
+    const selectedPath = window.prompt(
+      "Cartella server in cui copiare i file",
+      destinationPath
+    );
+
+    if (selectedPath !== null && selectedPath.trim()) {
+      setDestinationPath(selectedPath.trim());
+    }
+  }
+
+  async function deleteMediaAsset(asset: MediaAsset) {
+    if (!window.confirm(`Eliminare ${asset.originalName} e gli eventuali file HLS?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/media-files?id=${encodeURIComponent(asset.id)}`),
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+      const data = (await response.json()) as MediaAssetsResponse;
+
+      if (!response.ok) {
+        throw new Error(data.error || "Eliminazione file non riuscita.");
+      }
+
+      setMediaAssets((currentAssets) =>
+        currentAssets.filter((currentAsset) => currentAsset.id !== asset.id)
+      );
+      setStatus("saved");
+      setMessage(`${asset.originalName} eliminato.`);
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Eliminazione file non riuscita.");
+    }
+  }
+
+  async function convertMediaAsset(asset: MediaAsset) {
+    setMediaAssets((currentAssets) =>
+      currentAssets.map((currentAsset) =>
+        currentAsset.id === asset.id
+          ? {
+              ...currentAsset,
+              conversionStatus: "queued",
+              conversionProgress: 0,
+              conversionError: null
+            }
+          : currentAsset
+      )
+    );
+
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/media-files/${encodeURIComponent(asset.id)}/convert`),
+        {
+          method: "POST",
+          credentials: "include"
+        }
+      );
+      const data = (await response.json()) as MediaAssetsResponse;
+
+      if (!response.ok) {
+        throw new Error(data.error || "Avvio conversione HLS non riuscito.");
+      }
+
+      setStatus("saving");
+      setMessage(`${asset.originalName} aggiunto alla coda di conversione.`);
+      window.setTimeout(() => void loadMediaAssets(selectedMediaFolder), 500);
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Avvio conversione HLS non riuscito.");
+      void loadMediaAssets(selectedMediaFolder);
+    }
   }
 
   function updateStorage(patch: Partial<MediaConfig["storage"]>) {
@@ -1933,69 +2176,266 @@ export default function MediaLoadConversionPage() {
             })}
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div>
-              <label className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-white/20 bg-black/35 p-8 text-center transition hover:bg-white/[0.04]">
-                {selectedMediaFolder === "video" ? <FileVideo size={42} className="text-white/55" /> : null}
-                {selectedMediaFolder === "thumbnail" ? <ImageIcon size={42} className="text-white/55" /> : null}
-                {selectedMediaFolder === "subtitles" ? <Captions size={42} className="text-white/55" /> : null}
-                <span className="mt-4 text-lg font-black text-white">
-                  Carica {activeMediaFolder.label.toLowerCase()}
-                </span>
-                <span className="mt-2 text-sm text-white/55">{activeMediaFolder.hint}</span>
-                <span className="mt-3 text-xs text-white/35">
-                  Destinazione: {config.storage[activeMediaFolder.storageField]}
-                </span>
-                <input type="file" accept={activeMediaFolder.accept} className="sr-only" />
-              </label>
-
-              {selectedMediaFolder === "video" ? (
-                <div className="mt-5 rounded-md border border-white/10 bg-black/30 p-4">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={simulateConversion}
-                      className="inline-flex h-11 items-center gap-2 rounded-md bg-white px-4 text-sm font-black uppercase tracking-[0.1em] text-black"
-                    >
-                      <FileVideo size={18} />
-                      Avvia conversione HLS
-                    </button>
-                    <span className="text-sm font-bold text-white/60">{progress}%</span>
-                  </div>
-                  <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-stream-red transition-[width] duration-300"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-              ) : null}
+          <div className="rounded-md border border-white/10 bg-black/25 p-4">
+            <div className="grid gap-2 lg:grid-cols-[170px_minmax(0,1fr)_auto] lg:items-center">
+              <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-white/50">
+                <FolderCog size={17} />
+                Cartella destinazione
+              </span>
+              <input
+                value={destinationPath}
+                onChange={(event) => setDestinationPath(event.currentTarget.value)}
+                aria-label="Cartella di destinazione"
+                className="h-11 min-w-0 rounded-md border border-white/10 bg-black/45 px-3 font-mono text-sm text-white outline-none transition focus:border-white/35"
+              />
+              <button
+                type="button"
+                onClick={browseDestinationPath}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/15 px-4 text-sm font-black uppercase tracking-[0.08em] text-white transition hover:bg-white/10"
+              >
+                <FolderOpen size={17} />
+                Sfoglia cartella
+              </button>
             </div>
 
-            <div className="rounded-md border border-white/10 bg-black/35 p-4">
-              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-white">
-                <FolderCog size={18} />
-                Cartella selezionata
-              </div>
-              <div className="mt-4 rounded-md border border-white/10 bg-black/40 p-3">
-                <div className="text-xs font-black uppercase tracking-[0.12em] text-white/40">
-                  {activeMediaFolder.label}
-                </div>
-                <p className="mt-2 break-all text-sm leading-6 text-white/75">
-                  {config.storage[activeMediaFolder.storageField]}
-                </p>
-              </div>
-              {selectedMediaFolder === "video" ? (
-                <div className="mt-3 rounded-md border border-white/10 bg-black/40 p-3">
-                  <div className="text-xs font-black uppercase tracking-[0.12em] text-white/40">
-                    Output HLS
-                  </div>
-                  <p className="mt-2 break-all text-sm leading-6 text-white/75">
-                    {config.storage.convertedPath}
-                  </p>
-                </div>
-              ) : null}
+            <div
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDraggingMedia(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDraggingMedia(true);
+              }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setIsDraggingMedia(false);
+                }
+              }}
+              onDrop={handleMediaDrop}
+              className="mt-4 flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition"
+              style={{
+                borderColor: isDraggingMedia ? "#ffffff" : "rgba(255,255,255,0.2)",
+                backgroundColor: isDraggingMedia ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.3)"
+              }}
+            >
+              {uploadingMedia ? (
+                <Loader2 size={42} className="animate-spin text-white/70" />
+              ) : selectedMediaFolder === "video" ? (
+                <FileVideo size={42} className="text-white/55" />
+              ) : selectedMediaFolder === "thumbnail" ? (
+                <ImageIcon size={42} className="text-white/55" />
+              ) : (
+                <Captions size={42} className="text-white/55" />
+              )}
+              <span className="mt-4 text-lg font-black text-white">
+                {uploadingMedia
+                  ? "Caricamento e analisi in corso"
+                  : `Trascina qui ${activeMediaFolder.label.toLowerCase()}`}
+              </span>
+              <span className="mt-2 text-sm text-white/55">
+                {activeMediaFolder.hint} · puoi caricare più file
+              </span>
+              <button
+                type="button"
+                onClick={() => mediaFileInputRef.current?.click()}
+                disabled={uploadingMedia}
+                className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-white px-5 text-sm font-black uppercase tracking-[0.09em] text-black transition hover:bg-white/90 disabled:cursor-wait disabled:opacity-50"
+              >
+                <UploadCloud size={18} />
+                Sfoglia file
+              </button>
+              <input
+                ref={mediaFileInputRef}
+                type="file"
+                accept={activeMediaFolder.accept}
+                multiple
+                onChange={handleMediaFileSelection}
+                className="sr-only"
+              />
             </div>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-md border border-white/10 bg-black/25">
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+              <div>
+                <div className="text-sm font-black uppercase tracking-[0.12em] text-white">
+                  File caricati
+                </div>
+                <div className="mt-1 text-xs text-white/45">
+                  {loadingMediaAssets ? "Aggiornamento elenco…" : `${mediaAssets.length} file in archivio`}
+                </div>
+              </div>
+              {loadingMediaAssets ? <Loader2 size={18} className="animate-spin text-white/55" /> : null}
+            </div>
+
+            {mediaAssets.length > 0 ? (
+              <div className="overflow-x-auto">
+                <div className="min-w-[1420px]">
+                  <div className="grid grid-cols-[minmax(320px,2fr)_150px_170px_190px_115px_115px_130px_150px] gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
+                    <span>File e percorso</span>
+                    <span>Durata</span>
+                    <span>Qualità / formato</span>
+                    <span>Tracce audio</span>
+                    <span>File archivio</span>
+                    <span>HLS archivio</span>
+                    <span>Azioni</span>
+                    <span>Conversione</span>
+                  </div>
+
+                  {mediaAssets.map((asset) => {
+                    const isConverting = ["queued", "converting"].includes(asset.conversionStatus);
+                    const conversionLabel = asset.conversionStatus === "completed"
+                      ? "Completata"
+                      : asset.conversionStatus === "error"
+                        ? "Errore"
+                        : asset.conversionStatus === "queued"
+                          ? "In coda"
+                          : asset.conversionStatus === "converting"
+                            ? "Conversione"
+                            : "Non avviata";
+
+                    return (
+                      <div
+                        key={asset.id}
+                        className="grid grid-cols-[minmax(320px,2fr)_150px_170px_190px_115px_115px_130px_150px] gap-3 border-b border-white/[0.07] px-4 py-4 text-sm text-white/75 last:border-b-0"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-bold text-white" title={asset.originalName}>
+                            {asset.originalName}
+                          </div>
+                          <div
+                            className="mt-1 break-all font-mono text-[11px] leading-4 text-white/40"
+                            title={asset.filePath}
+                          >
+                            {asset.filePath}
+                          </div>
+                        </div>
+                        <div className="font-mono text-xs font-bold text-white/70">
+                          {formatVideoDuration(asset.durationSeconds, asset.frameRate)}
+                          {asset.frameRate ? (
+                            <div className="mt-1 text-[10px] font-normal text-white/35">
+                              {asset.frameRate.toFixed(2)} fps
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="text-xs leading-5">
+                          <div className="font-bold text-white/80">{getVideoQuality(asset)}</div>
+                          <div className="text-white/40">
+                            {[asset.videoCodec, asset.containerFormat]
+                              .filter(Boolean)
+                              .map((value) => value?.toUpperCase())
+                              .join(" · ") || "Formato non rilevato"}
+                          </div>
+                        </div>
+                        <div className="text-xs leading-5">
+                          <div className="font-bold text-white/80">{getAudioDescription(asset)}</div>
+                          {asset.audioTracks.length > 0 ? (
+                            <div className="text-white/40">
+                              {asset.audioTracks
+                                .map((track) =>
+                                  [track.language?.toUpperCase(), track.layout || (track.channels ? `${track.channels} ch` : null)]
+                                    .filter(Boolean)
+                                    .join(" ")
+                                )
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div>
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                              asset.sourceExists
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : "bg-red-500/15 text-red-300"
+                            }`}
+                          >
+                            {asset.sourceExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
+                            {asset.sourceExists ? "Presente" : "Assente"}
+                          </span>
+                        </div>
+                        <div>
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                              asset.hlsExists
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : isConverting
+                                  ? "bg-amber-500/15 text-amber-300"
+                                  : "bg-white/[0.07] text-white/45"
+                            }`}
+                          >
+                            {asset.hlsExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
+                            {asset.hlsExists ? "Presente" : isConverting ? "In corso" : "Assente"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-start gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void deleteMediaAsset(asset)}
+                            disabled={isConverting}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-400/20 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-35"
+                          >
+                            <Trash2 size={13} />
+                            Elimina
+                          </button>
+                          {asset.mediaType === "video" ? (
+                            <button
+                              type="button"
+                              onClick={() => void convertMediaAsset(asset)}
+                              disabled={!asset.sourceExists || isConverting}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              {isConverting ? <Loader2 size={13} className="animate-spin" /> : <FileVideo size={13} />}
+                              Converti
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.06em]">
+                            <span
+                              className={
+                                asset.conversionStatus === "error"
+                                  ? "text-red-300"
+                                  : asset.conversionStatus === "completed"
+                                    ? "text-emerald-300"
+                                    : "text-white/55"
+                              }
+                            >
+                              {conversionLabel}
+                            </span>
+                            <span className="text-white/45">{asset.conversionProgress}%</span>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className={`h-full rounded-full transition-[width] duration-500 ${
+                                asset.conversionStatus === "error"
+                                  ? "bg-red-500"
+                                  : asset.conversionStatus === "completed"
+                                    ? "bg-emerald-500"
+                                    : "bg-stream-red"
+                              }`}
+                              style={{ width: `${asset.conversionProgress}%` }}
+                            />
+                          </div>
+                          {asset.conversionError ? (
+                            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-red-300/75" title={asset.conversionError}>
+                              {asset.conversionError}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-32 items-center justify-center px-6 text-center text-sm text-white/45">
+                {loadingMediaAssets
+                  ? "Caricamento dei file in archivio…"
+                  : `Nessun file ${activeMediaFolder.label.toLowerCase()} caricato.`}
+              </div>
+            )}
           </div>
         </AdminCard>
       ) : null}
