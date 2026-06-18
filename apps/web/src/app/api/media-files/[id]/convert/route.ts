@@ -1,6 +1,7 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { NextRequest } from "next/server";
 import { corsJson, corsOptions } from "@/lib/cors";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ADMIN_COOKIE_NAME = "flixtv_admin_auth";
+const execFileAsync = promisify(execFile);
 const activeConversions = new Map<string, ReturnType<typeof spawn>>();
 const startingConversions = new Set<string>();
 const cancelledConversions = new Set<string>();
@@ -24,6 +26,83 @@ function isAdminRequest(request: NextRequest) {
 function parseProgressTime(value: string) {
   const microseconds = Number(value);
   return Number.isFinite(microseconds) ? microseconds / 1_000_000 : 0;
+}
+
+type ProbeStream = {
+  codec_type?: string;
+  codec_name?: string;
+  width?: number;
+  height?: number;
+  avg_frame_rate?: string;
+  r_frame_rate?: string;
+  channels?: number;
+  channel_layout?: string;
+  tags?: {
+    language?: string;
+  };
+};
+
+type ProbeResult = {
+  streams?: ProbeStream[];
+  format?: {
+    duration?: string;
+    format_name?: string;
+  };
+};
+
+function parseFrameRate(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const [numerator, denominator] = value.split("/").map(Number);
+
+  if (!numerator || !denominator) {
+    return Number(value) || null;
+  }
+
+  return numerator / denominator;
+}
+
+async function probeFile(filePath: string) {
+  try {
+    const { stdout } = await execFileAsync(
+      process.env.FFPROBE_PATH || "ffprobe",
+      [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        filePath
+      ],
+      {
+        maxBuffer: 4 * 1024 * 1024
+      }
+    );
+    const probe = JSON.parse(stdout) as ProbeResult;
+    const videoStream = probe.streams?.find((stream) => stream.codec_type === "video");
+    const audioStreams = probe.streams?.filter((stream) => stream.codec_type === "audio") ?? [];
+
+    return {
+      durationSeconds: probe.format?.duration ? Number(probe.format.duration) : null,
+      frameRate: parseFrameRate(videoStream?.avg_frame_rate || videoStream?.r_frame_rate),
+      width: videoStream?.width ?? null,
+      height: videoStream?.height ?? null,
+      videoCodec: videoStream?.codec_name ?? null,
+      containerFormat: probe.format?.format_name?.split(",")[0] ?? null,
+      audioTracks: audioStreams.map((stream, index) => ({
+        index: index + 1,
+        codec: stream.codec_name ?? "unknown",
+        channels: stream.channels ?? null,
+        layout: stream.channel_layout ?? null,
+        language: stream.tags?.language ?? null
+      }))
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function startConversion(id: string) {
@@ -217,17 +296,22 @@ async function startConversion(id: string) {
     }
 
     const succeeded = code === 0;
-    void prisma.mediaAsset.update({
-      where: {
-        id
-      },
-      data: {
-        hlsExists: succeeded,
-        conversionStatus: succeeded ? "completed" : "error",
-        conversionProgress: succeeded ? 100 : lastProgress > 0 ? lastProgress : 0,
-        conversionError: succeeded ? null : errorOutput || `FFmpeg exited with code ${code}`
-      }
-    });
+    void (async () => {
+      const technicalMetadata = succeeded ? await probeFile(asset.filePath) : null;
+
+      await prisma.mediaAsset.update({
+        where: {
+          id
+        },
+        data: {
+          hlsExists: succeeded,
+          conversionStatus: succeeded ? "completed" : "error",
+          conversionProgress: succeeded ? 100 : lastProgress > 0 ? lastProgress : 0,
+          conversionError: succeeded ? null : errorOutput || `FFmpeg exited with code ${code}`,
+          ...(technicalMetadata ?? {})
+        }
+      });
+    })();
   });
 }
 

@@ -2307,16 +2307,14 @@ export default function MediaLoadConversionPage() {
 
             {mediaAssets.length > 0 ? (
               <div className="overflow-x-auto">
-                <div className="min-w-[1420px]">
-                  <div className="grid grid-cols-[minmax(320px,2fr)_150px_170px_190px_115px_115px_130px_150px] gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
+                <div className="min-w-[1180px]">
+                  <div className="grid grid-cols-[minmax(320px,2fr)_150px_180px_210px_125px_125px] gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
                     <span>File e percorso</span>
                     <span>Durata</span>
                     <span>Qualità / formato</span>
                     <span>Tracce audio</span>
                     <span>File archivio</span>
                     <span>HLS archivio</span>
-                    <span>Azioni</span>
-                    <span>Conversione</span>
                   </div>
 
                   {mediaAssets.map((asset) => {
@@ -2336,146 +2334,155 @@ export default function MediaLoadConversionPage() {
                     return (
                       <div
                         key={asset.id}
-                        className="grid grid-cols-[minmax(320px,2fr)_150px_170px_190px_115px_115px_130px_150px] gap-3 border-b border-white/[0.07] px-4 py-4 text-sm text-white/75 last:border-b-0"
+                        className="border-b border-white/[0.07] last:border-b-0"
                       >
-                        <div className="min-w-0">
-                          <div className="truncate font-bold text-white" title={asset.originalName}>
-                            {asset.originalName}
-                          </div>
-                          <div
-                            className="mt-1 break-all font-mono text-[11px] leading-4 text-white/40"
-                            title={asset.filePath}
-                          >
-                            {asset.filePath}
-                          </div>
-                        </div>
-                        <div className="font-mono text-xs font-bold text-white/70">
-                          {formatVideoDuration(asset.durationSeconds, asset.frameRate)}
-                          {asset.frameRate ? (
-                            <div className="mt-1 text-[10px] font-normal text-white/35">
-                              {asset.frameRate.toFixed(2)} fps
+                        <div className="grid grid-cols-[minmax(320px,2fr)_150px_180px_210px_125px_125px] gap-3 px-4 py-4 text-sm text-white/75">
+                          <div className="min-w-0">
+                            <div className="truncate font-bold text-white" title={asset.originalName}>
+                              {asset.originalName}
                             </div>
-                          ) : null}
-                        </div>
-                        <div className="text-xs leading-5">
-                          <div className="font-bold text-white/80">{getVideoQuality(asset)}</div>
-                          <div className="text-white/40">
-                            {[asset.videoCodec, asset.containerFormat]
-                              .filter(Boolean)
-                              .map((value) => value?.toUpperCase())
-                              .join(" · ") || "Formato non rilevato"}
+                            <div
+                              className="mt-1 break-all font-mono text-[11px] leading-4 text-white/40"
+                              title={asset.filePath}
+                            >
+                              {asset.filePath}
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-xs leading-5">
-                          <div className="font-bold text-white/80">{getAudioDescription(asset)}</div>
-                          {asset.audioTracks.length > 0 ? (
+                          <div className="font-mono text-xs font-bold text-white/70">
+                            {formatVideoDuration(asset.durationSeconds, asset.frameRate)}
+                            {asset.frameRate ? (
+                              <div className="mt-1 text-[10px] font-normal text-white/35">
+                                {asset.frameRate.toFixed(2)} fps
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-xs leading-5">
+                            <div className="font-bold text-white/80">{getVideoQuality(asset)}</div>
                             <div className="text-white/40">
-                              {asset.audioTracks
-                                .map((track) =>
-                                  [track.language?.toUpperCase(), track.layout || (track.channels ? `${track.channels} ch` : null)]
-                                    .filter(Boolean)
-                                    .join(" ")
-                                )
+                              {[asset.videoCodec, asset.containerFormat]
                                 .filter(Boolean)
-                                .join(" · ")}
+                                .map((value) => value?.toUpperCase())
+                                .join(" · ") || "Formato non rilevato"}
                             </div>
-                          ) : null}
+                          </div>
+                          <div className="text-xs leading-5">
+                            <div className="font-bold text-white/80">{getAudioDescription(asset)}</div>
+                            {asset.audioTracks.length > 0 ? (
+                              <div className="text-white/40">
+                                {asset.audioTracks
+                                  .map((track) =>
+                                    [track.language?.toUpperCase(), track.layout || (track.channels ? `${track.channels} ch` : null)]
+                                      .filter(Boolean)
+                                      .join(" ")
+                                  )
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                                asset.sourceExists
+                                  ? "bg-emerald-500/15 text-emerald-300"
+                                  : "bg-red-500/15 text-red-300"
+                              }`}
+                            >
+                              {asset.sourceExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
+                              {asset.sourceExists ? "Presente" : "Assente"}
+                            </span>
+                          </div>
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                                asset.hlsExists
+                                  ? "bg-emerald-500/15 text-emerald-300"
+                                  : isConverting
+                                    ? "bg-amber-500/15 text-amber-300"
+                                    : "bg-white/[0.07] text-white/45"
+                              }`}
+                            >
+                              {asset.hlsExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
+                              {asset.hlsExists ? "Presente" : isConverting ? "In corso" : "Assente"}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
-                              asset.sourceExists
-                                ? "bg-emerald-500/15 text-emerald-300"
-                                : "bg-red-500/15 text-red-300"
-                            }`}
-                          >
-                            {asset.sourceExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
-                            {asset.sourceExists ? "Presente" : "Assente"}
-                          </span>
-                        </div>
-                        <div>
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
-                              asset.hlsExists
-                                ? "bg-emerald-500/15 text-emerald-300"
-                                : isConverting
-                                  ? "bg-amber-500/15 text-amber-300"
-                                  : "bg-white/[0.07] text-white/45"
-                            }`}
-                          >
-                            {asset.hlsExists ? <CircleCheck size={13} /> : <CircleX size={13} />}
-                            {asset.hlsExists ? "Presente" : isConverting ? "In corso" : "Assente"}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-start gap-2">
+
+                        <div className="flex items-center gap-3 border-t border-white/[0.05] bg-black/20 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.06em]">
+                              <span
+                                className={
+                                  asset.conversionStatus === "error"
+                                    ? "text-red-300"
+                                    : asset.conversionStatus === "completed"
+                                      ? "text-emerald-300"
+                                      : asset.conversionStatus === "cancelled"
+                                        ? "text-amber-300"
+                                        : "text-white/55"
+                                }
+                              >
+                                {conversionLabel}
+                              </span>
+                              <span className="text-white/45">{asset.conversionProgress}%</span>
+                            </div>
+                            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                              <div
+                                className={`h-full rounded-full transition-[width] duration-500 ${
+                                  asset.conversionStatus === "error"
+                                    ? "bg-red-500"
+                                    : asset.conversionStatus === "completed"
+                                      ? "bg-emerald-500"
+                                      : asset.conversionStatus === "cancelled"
+                                        ? "bg-amber-400"
+                                        : "bg-stream-red"
+                                }`}
+                                style={{ width: `${asset.conversionProgress}%` }}
+                              />
+                            </div>
+                            {asset.conversionError ? (
+                              <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-red-300/75" title={asset.conversionError}>
+                                {asset.conversionError}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-2">
+                            {asset.mediaType === "video" ? (
+                              isConverting ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void stopMediaConversion(asset)}
+                                  title="Interrompi conversione"
+                                  aria-label={`Interrompi conversione di ${asset.originalName}`}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-amber-300 text-black transition hover:bg-amber-200"
+                                >
+                                  <CircleX size={17} />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => void convertMediaAsset(asset)}
+                                  disabled={!asset.sourceExists}
+                                  title="Converti in HLS"
+                                  aria-label={`Converti ${asset.originalName} in HLS`}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                                >
+                                  <FileVideo size={17} />
+                                </button>
+                              )
+                            ) : null}
                           <button
                             type="button"
                             onClick={() => void deleteMediaAsset(asset)}
                             disabled={isConverting}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-400/20 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-35"
+                            title="Elimina file"
+                            aria-label={`Elimina ${asset.originalName}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-400/20 text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-35"
                           >
-                            <Trash2 size={13} />
-                            Elimina
+                            <Trash2 size={17} />
                           </button>
-                          {asset.mediaType === "video" ? (
-                            isConverting ? (
-                              <button
-                                type="button"
-                                onClick={() => void stopMediaConversion(asset)}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-300 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-amber-200"
-                              >
-                                <CircleX size={13} />
-                                Interrompi
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => void convertMediaAsset(asset)}
-                                disabled={!asset.sourceExists}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
-                              >
-                                <FileVideo size={13} />
-                                Converti
-                              </button>
-                            )
-                          ) : null}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.06em]">
-                            <span
-                              className={
-                                asset.conversionStatus === "error"
-                                  ? "text-red-300"
-                                  : asset.conversionStatus === "completed"
-                                    ? "text-emerald-300"
-                                    : asset.conversionStatus === "cancelled"
-                                      ? "text-amber-300"
-                                    : "text-white/55"
-                              }
-                            >
-                              {conversionLabel}
-                            </span>
-                            <span className="text-white/45">{asset.conversionProgress}%</span>
                           </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className={`h-full rounded-full transition-[width] duration-500 ${
-                                asset.conversionStatus === "error"
-                                  ? "bg-red-500"
-                                  : asset.conversionStatus === "completed"
-                                    ? "bg-emerald-500"
-                                    : asset.conversionStatus === "cancelled"
-                                      ? "bg-amber-400"
-                                    : "bg-stream-red"
-                              }`}
-                              style={{ width: `${asset.conversionProgress}%` }}
-                            />
-                          </div>
-                          {asset.conversionError ? (
-                            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-red-300/75" title={asset.conversionError}>
-                              {asset.conversionError}
-                            </div>
-                          ) : null}
                         </div>
                       </div>
                     );
