@@ -1,12 +1,12 @@
 export type ProgramDetail = {
   id?: string;
-  programCode: string;
-  seasonCode: string;
   categoria: string;
+  genere: string;
   programma: string;
-  serie: string;
   stagione: string;
   numeroPuntate: number;
+  IDprogramma: string;
+  IDstagione: string;
 };
 
 export type ProgramEpisode = {
@@ -38,43 +38,43 @@ export type ProgramEpisode = {
 export const DEFAULT_PROGRAMS: ProgramDetail[] = [
   {
     id: "default-fuori-corso",
-    programCode: "FRCRS",
-    seasonCode: "FCS01",
     categoria: "Sitcom",
+    genere: "Commedia",
     programma: "Fuori Corso",
-    serie: "Fuori Corso",
     stagione: "Stagione 1",
-    numeroPuntate: 12
+    numeroPuntate: 12,
+    IDprogramma: "FRCRS",
+    IDstagione: "FCS01"
   },
   {
     id: "default-bed-and-breakfast",
-    programCode: "BDBRK",
-    seasonCode: "BBK01",
     categoria: "Sitcom",
+    genere: "Commedia",
     programma: "Bed&Breakfast",
-    serie: "Bed&Breakfast",
     stagione: "Stagione 1",
-    numeroPuntate: 10
+    numeroPuntate: 10,
+    IDprogramma: "BDBRK",
+    IDstagione: "BBK01"
   },
   {
     id: "default-tutti-a-casa",
-    programCode: "TTTCS",
-    seasonCode: "TTS01",
     categoria: "Sitcom",
+    genere: "Commedia",
     programma: "Tutti a Casa",
-    serie: "Tutti a Casa",
     stagione: "Stagione 1",
-    numeroPuntate: 8
+    numeroPuntate: 8,
+    IDprogramma: "TTTCS",
+    IDstagione: "TTS01"
   },
   {
     id: "default-telegaribaldi",
-    programCode: "TLGRB",
-    seasonCode: "TGB26",
     categoria: "News",
+    genere: "Informazione",
     programma: "Telegaribaldi",
-    serie: "Edizione quotidiana",
     stagione: "2026",
-    numeroPuntate: 365
+    numeroPuntate: 365,
+    IDprogramma: "TLGRB",
+    IDstagione: "TGB26"
   }
 ];
 
@@ -158,12 +158,12 @@ export function normalizeProgram(value: unknown): ProgramDetail | null {
 
   const program = value as Partial<ProgramDetail>;
   const categoria = isString(program.categoria) ? program.categoria.trim() : "";
+  const genere = isString(program.genere) ? program.genere.trim() : "";
   const programma = isString(program.programma) ? program.programma.trim() : "";
-  const serie = isString(program.serie) ? program.serie.trim() : "";
   const stagione = isString(program.stagione) ? program.stagione.trim() : "";
   const programCode = generateProgramCode(programma);
 
-  if (!categoria || !programma || !serie || !stagione) {
+  if (!categoria || !genere || !programma || !stagione) {
     return null;
   }
 
@@ -172,15 +172,15 @@ export function normalizeProgram(value: unknown): ProgramDetail | null {
       isString(program.id) && !program.id.startsWith("temp-") && !program.id.startsWith("default-")
         ? program.id
         : undefined,
-    programCode,
-    seasonCode: generateSeasonCode(programCode, stagione),
     categoria,
+    genere,
     programma,
-    serie,
     stagione,
     numeroPuntate: isNumber(program.numeroPuntate)
       ? Math.max(0, Math.round(program.numeroPuntate))
-      : 0
+      : 0,
+    IDprogramma: programCode,
+    IDstagione: generateSeasonCode(programCode, stagione)
   };
 }
 
@@ -205,17 +205,17 @@ export function uniqueValues(programs: ProgramDetail[], key: keyof ProgramDetail
 }
 
 export function createEpisodeDraft(season: ProgramDetail): ProgramEpisode {
-  const seasonId = season.id ?? `${season.categoria}-${season.serie}-${season.stagione}`;
+  const seasonId = season.id ?? `${season.categoria}-${season.programma}-${season.stagione}`;
 
   return {
     id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     episodeCode: generateEpisodeCode(
-      season.programCode || generateProgramCode(season.programma),
+      season.IDprogramma || generateProgramCode(season.programma),
       season.stagione,
       1
     ),
     seasonId,
-    seriesId: season.seasonCode || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
+    seriesId: season.IDstagione || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
     episodeNumber: 1,
     productionCode: generateProductionCode(season.stagione, 1),
     title: "",

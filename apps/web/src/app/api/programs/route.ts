@@ -24,26 +24,25 @@ function isAdminRequest(request: NextRequest) {
 
 function serializeProgram(program: {
   id: string;
-  programCode?: string | null;
-  seasonCode?: string | null;
   categoria: string;
+  genere: string;
   programma: string;
-  serie: string;
   stagione: string;
   numeroPuntate: number;
+  IDprogramma?: string | null;
+  IDstagione?: string | null;
 }): ProgramDetail {
+  const IDprogramma = program.IDprogramma || generateProgramCode(program.programma);
+
   return {
     id: program.id,
-    programCode: program.programCode || generateProgramCode(program.programma),
-    seasonCode: program.seasonCode || generateSeasonCode(
-      program.programCode || generateProgramCode(program.programma),
-      program.stagione
-    ),
     categoria: program.categoria,
+    genere: program.genere,
     programma: program.programma,
-    serie: program.serie,
     stagione: program.stagione,
-    numeroPuntate: program.numeroPuntate
+    numeroPuntate: program.numeroPuntate,
+    IDprogramma,
+    IDstagione: program.IDstagione || generateSeasonCode(IDprogramma, program.stagione)
   };
 }
 
@@ -62,7 +61,7 @@ export async function GET(request: NextRequest) {
           programma: "asc"
         },
         {
-          serie: "asc"
+          genere: "asc"
         },
         {
           stagione: "asc"
@@ -93,13 +92,13 @@ export async function POST(request: NextRequest) {
 
   const createdProgram = await prisma.programDetail.create({
     data: {
-      programCode: program.programCode,
-      seasonCode: program.seasonCode,
       categoria: program.categoria,
+      genere: program.genere,
       programma: program.programma,
-      serie: program.serie,
       stagione: program.stagione,
-      numeroPuntate: program.numeroPuntate
+      numeroPuntate: program.numeroPuntate,
+      IDprogramma: program.IDprogramma,
+      IDstagione: program.IDstagione
     }
   });
 
@@ -128,13 +127,13 @@ export async function PUT(request: NextRequest) {
       id
     },
     data: {
-      programCode: program.programCode,
-      seasonCode: program.seasonCode,
       categoria: program.categoria,
+      genere: program.genere,
       programma: program.programma,
-      serie: program.serie,
       stagione: program.stagione,
-      numeroPuntate: program.numeroPuntate
+      numeroPuntate: program.numeroPuntate,
+      IDprogramma: program.IDprogramma,
+      IDstagione: program.IDstagione
     }
   });
 

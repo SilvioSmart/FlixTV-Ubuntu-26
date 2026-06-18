@@ -148,23 +148,23 @@ model MediaFieldOption {
 }
 
 model ProgramDetail {
-  id           String   @id @default(cuid())
-  programCode  String   @default("")
-  seasonCode   String   @default("")
-  categoria    String
-  programma    String
-  serie        String
-  stagione     String
+  id            String   @id @default(cuid())
+  categoria     String
+  genere        String   @default("")
+  programma     String
+  stagione      String
   numeroPuntate Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  IDprogramma   String   @default("") @db.VarChar(5)
+  IDstagione    String   @default("") @db.VarChar(6)
   episodes      ProgramEpisode[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
   @@index([categoria])
+  @@index([genere])
   @@index([programma])
-  @@index([serie])
-  @@index([programCode])
-  @@index([seasonCode])
+  @@index([IDprogramma])
+  @@index([IDstagione])
   @@map("programmi")
 }
 

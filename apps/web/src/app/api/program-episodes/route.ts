@@ -41,7 +41,7 @@ type StoredEpisode = {
   season?: {
     programma: string;
     stagione: string;
-    programCode: string;
+    IDprogramma: string;
   };
 };
 
@@ -119,11 +119,11 @@ async function resolveGeneratedCodes(episode: ProgramEpisode) {
     select: {
       programma: true,
       stagione: true,
-      programCode: true
+      IDprogramma: true
     }
   });
 
-  const programCode = season?.programCode || generateProgramCode(season?.programma ?? episode.seriesId);
+  const programCode = season?.IDprogramma || generateProgramCode(season?.programma ?? episode.seriesId);
   const seasonLabel = season?.stagione ?? "Stagione 1";
 
   return {
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
           select: {
             programma: true,
             stagione: true,
-            programCode: true
+            IDprogramma: true
           }
         }
       },
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     }) as StoredEpisode[];
     const normalizedEpisodes = await Promise.all(
       episodes.map(async (episode) => {
-        const programCode = episode.season?.programCode ||
+        const programCode = episode.season?.IDprogramma ||
           generateProgramCode(episode.season?.programma ?? episode.seriesId);
         const episodeCode = generateEpisodeCode(
           programCode,

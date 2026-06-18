@@ -81,6 +81,7 @@ type CatalogSelection = {
 type CatalogDraft = {
   id?: string;
   categoria: string;
+  genere: string;
   programma: string;
   stagione: string;
   numeroPuntate: number;
@@ -127,13 +128,13 @@ function createProgram(): ProgramDetail {
 
   return {
     id: createTempId(),
-    programCode,
-    seasonCode: generateSeasonCode(programCode, stagione),
     categoria: "Nuova categoria",
+    genere: "Nuovo genere",
     programma,
-    serie: programma,
     stagione,
-    numeroPuntate: 0
+    numeroPuntate: 0,
+    IDprogramma: programCode,
+    IDstagione: generateSeasonCode(programCode, stagione)
   };
 }
 
@@ -172,6 +173,7 @@ function createDraftFromSelection(
       return {
         id: season.id,
         categoria: season.categoria,
+        genere: season.genere,
         programma: season.programma,
         stagione: season.stagione,
         numeroPuntate: season.numeroPuntate
@@ -186,6 +188,7 @@ function createDraftFromSelection(
 
     return {
       categoria: selection.categoria,
+      genere: program?.genere ?? "",
       programma: selection.programma ?? program?.programma ?? "",
       stagione: program?.stagione ?? "",
       numeroPuntate: program?.numeroPuntate ?? 0
@@ -196,6 +199,7 @@ function createDraftFromSelection(
 
   return {
     categoria: selection.categoria,
+    genere: categoryProgram?.genere ?? "",
     programma: categoryProgram?.programma ?? "",
     stagione: categoryProgram?.stagione ?? "",
     numeroPuntate: categoryProgram?.numeroPuntate ?? 0
@@ -292,9 +296,9 @@ export default function MediaLoadConversionPage() {
     [episodes, selectedEpisodeId]
   );
   const generatedVideoCodes = useMemo(() => {
-    const programCode = selectedVideoSeason?.programCode ||
+    const programCode = selectedVideoSeason?.IDprogramma ||
       generateProgramCode(selectedVideoSeason?.programma ?? "");
-    const seasonCode = selectedVideoSeason?.seasonCode ||
+    const seasonCode = selectedVideoSeason?.IDstagione ||
       generateSeasonCode(programCode, selectedVideoSeason?.stagione ?? "Stagione 1");
     const episodeCode = generateEpisodeCode(
       programCode,
@@ -456,6 +460,7 @@ export default function MediaLoadConversionPage() {
     setCatalogDraft({
       id: undefined,
       categoria: baseDraft.categoria || "Nuova categoria",
+      genere: baseDraft.genere || "Nuovo genere",
       programma: selectedCatalog?.type === "category" ? "Nuovo programma" : baseDraft.programma || "Nuovo programma",
       stagione: "Stagione 1",
       numeroPuntate: 0
@@ -529,8 +534,7 @@ export default function MediaLoadConversionPage() {
 
   async function saveCatalog() {
     const normalizedDraft = normalizeProgram({
-      ...catalogDraft,
-      serie: catalogDraft.programma
+      ...catalogDraft
     });
 
     if (!normalizedDraft) {
@@ -573,8 +577,8 @@ export default function MediaLoadConversionPage() {
             upsertProgram({
               ...program,
               categoria: normalizedDraft.categoria,
+              genere: normalizedDraft.genere,
               programma: normalizedDraft.programma,
-              serie: normalizedDraft.programma
             })
           )
         );
@@ -598,7 +602,8 @@ export default function MediaLoadConversionPage() {
           affectedPrograms.map((program) =>
             upsertProgram({
               ...program,
-              categoria: normalizedDraft.categoria
+              categoria: normalizedDraft.categoria,
+              genere: normalizedDraft.genere
             })
           )
         );
@@ -715,7 +720,7 @@ export default function MediaLoadConversionPage() {
     const seasonEpisodes = episodes.filter((episode) => episode.seasonId === selectedVideoSeason.id);
     nextEpisode.episodeNumber = seasonEpisodes.length + 1;
     nextEpisode.episodeCode = generateEpisodeCode(
-      selectedVideoSeason.programCode || generateProgramCode(selectedVideoSeason.programma),
+      selectedVideoSeason.IDprogramma || generateProgramCode(selectedVideoSeason.programma),
       selectedVideoSeason.stagione,
       nextEpisode.episodeNumber
     );
@@ -1165,6 +1170,17 @@ export default function MediaLoadConversionPage() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                    Genere
+                  </span>
+                  <input
+                    value={catalogDraft.genere}
+                    disabled={!isCatalogEditing}
+                    onChange={(event) => updateCatalogDraft({ genere: event.currentTarget.value })}
+                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none disabled:opacity-55"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
                     Programma
                   </span>
                   <input
@@ -1172,6 +1188,29 @@ export default function MediaLoadConversionPage() {
                     disabled={!isCatalogEditing || (selectedCatalog?.type === "category" && !isNewCatalogItem)}
                     onChange={(event) => updateCatalogDraft({ programma: event.currentTarget.value })}
                     className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none disabled:opacity-55"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                    IDprogramma
+                  </span>
+                  <input
+                    value={generateProgramCode(catalogDraft.programma)}
+                    readOnly
+                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">
+                    IDstagione
+                  </span>
+                  <input
+                    value={generateSeasonCode(
+                      generateProgramCode(catalogDraft.programma),
+                      catalogDraft.stagione
+                    )}
+                    readOnly
+                    className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
                   />
                 </label>
                 <label className="block">
@@ -1400,7 +1439,7 @@ export default function MediaLoadConversionPage() {
                         Record DB: {episodeDraft.id?.startsWith("temp-") ? "Autogenerato al salvataggio" : episodeDraft.id}
                       </p>
                       <p className="mt-1 text-sm text-white/45">
-                        ID stagione: {episodeDraft.seasonId} | ID serie: {episodeDraft.seriesId}
+                        Record stagione: {episodeDraft.seasonId} | IDstagione: {episodeDraft.seriesId}
                       </p>
                     </div>
                   </div>
