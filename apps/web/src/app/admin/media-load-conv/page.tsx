@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
   ChevronDown,
   ChevronRight,
   Clapperboard,
   Captions,
+  CircleCheck,
+  CircleX,
   FileVideo,
   FolderCog,
   FolderOpen,
+  HardDrive,
   Image as ImageIcon,
   Layers,
   Loader2,
@@ -16,7 +19,8 @@ import {
   Plus,
   RotateCcw,
   Save,
-  Trash2
+  Trash2,
+  UploadCloud
 } from "lucide-react";
 import AdminCard from "@/components/admin/AdminCard";
 import AdminShell from "@/components/admin/AdminShell";
@@ -48,6 +52,41 @@ type StorageField = keyof MediaConfig["storage"];
 type CatalogNodeType = "category" | "program" | "season";
 type EpisodeTab = "info" | "media" | "technical" | "rights" | "vast";
 type MediaFolder = "video" | "thumbnail" | "subtitles";
+
+type MediaAsset = {
+  id: string;
+  mediaType: MediaFolder;
+  originalName: string;
+  fileName: string;
+  filePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  durationSeconds: number | null;
+  frameRate: number | null;
+  width: number | null;
+  height: number | null;
+  videoCodec: string | null;
+  containerFormat: string | null;
+  audioTracks: Array<{
+    index: number;
+    codec: string;
+    channels: number | null;
+    layout: string | null;
+    language: string | null;
+  }>;
+  sourceExists: boolean;
+  hlsExists: boolean;
+  hlsPath: string | null;
+  conversionStatus: string;
+  conversionProgress: number;
+  conversionError: string | null;
+};
+
+type MediaAssetsResponse = {
+  assets?: MediaAsset[];
+  asset?: MediaAsset;
+  error?: string;
+};
 
 type MediaConfigResponse = {
   config?: MediaConfig;
@@ -243,7 +282,6 @@ function createDraftFromSelection(
 export default function MediaLoadConversionPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("catalog");
   const [selectedMediaFolder, setSelectedMediaFolder] = useState<MediaFolder>("video");
-  const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<MediaConfig>(DEFAULT_MEDIA_CONFIG);
   const [savedStorage, setSavedStorage] = useState<MediaConfig["storage"]>(
     DEFAULT_MEDIA_CONFIG.storage
@@ -276,6 +314,12 @@ export default function MediaLoadConversionPage() {
   const [savingCatalog, setSavingCatalog] = useState(false);
   const [savingEpisode, setSavingEpisode] = useState(false);
   const [savingVast, setSavingVast] = useState(false);
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [loadingMediaAssets, setLoadingMediaAssets] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [destinationPath, setDestinationPath] = useState(DEFAULT_MEDIA_CONFIG.storage.uploadPath);
+  const [isDraggingMedia, setIsDraggingMedia] = useState(false);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
   const categoriaOptions = useMemo(() => uniqueValues(programs, "categoria"), [programs]);
   const catalogTree = useMemo(() => {

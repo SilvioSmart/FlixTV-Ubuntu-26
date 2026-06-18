@@ -123,6 +123,35 @@ model MediaStorageConfig {
   @@map("media_config")
 }
 
+model MediaAsset {
+  id               String   @id @default(cuid())
+  mediaType        String
+  originalName     String
+  fileName         String
+  filePath         String   @unique
+  mimeType         String
+  sizeBytes        BigInt
+  durationSeconds  Float?
+  frameRate        Float?
+  width            Int?
+  height           Int?
+  videoCodec       String?
+  containerFormat  String?
+  audioTracks      Json     @default("[]")
+  sourceExists     Boolean  @default(true)
+  hlsExists        Boolean  @default(false)
+  hlsPath          String?
+  conversionStatus String   @default("idle")
+  conversionProgress Int    @default(0)
+  conversionError  String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([mediaType, createdAt])
+  @@index([conversionStatus])
+  @@map("media_assets")
+}
+
 model VastConfig {
   id        String   @id @default("default")
   vastUrl   String
