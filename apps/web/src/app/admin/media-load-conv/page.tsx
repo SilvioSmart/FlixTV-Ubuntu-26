@@ -28,6 +28,7 @@ import {
   createEpisodeDraft,
   DEFAULT_PROGRAMS,
   generateEpisodeCode,
+  generateProductionCode,
   generateProgramCode,
   generateSeasonCode,
   MAX_RESOLUTIONS,
@@ -304,7 +305,11 @@ export default function MediaLoadConversionPage() {
     return {
       programCode,
       seasonCode,
-      episodeCode
+      episodeCode,
+      productionCode: generateProductionCode(
+        selectedVideoSeason?.stagione ?? "Stagione 1",
+        episodeDraft?.episodeNumber ?? 1
+      )
     };
   }, [episodeDraft?.episodeNumber, selectedVideoSeason]);
 
@@ -1473,10 +1478,9 @@ export default function MediaLoadConversionPage() {
                           Codice di produzione
                         </span>
                         <input
-                          value={episodeDraft.productionCode}
-                          onChange={(event) => updateEpisodeDraft({ productionCode: event.currentTarget.value })}
-                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/50 px-3 text-sm text-white outline-none"
-                          placeholder="S01E01"
+                          value={generatedVideoCodes.productionCode}
+                          readOnly
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
                         />
                       </label>
                       <label className="block md:col-span-2">

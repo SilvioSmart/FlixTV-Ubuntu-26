@@ -174,7 +174,7 @@ model ProgramEpisode {
   seasonId          String
   seriesId          String
   episodeNumber     Int
-  productionCode    String?
+  productionCode    String?       @db.VarChar(6)
   title             String        @db.VarChar(150)
   shortPlot         String?       @db.VarChar(250)
   longPlot          String?       @db.Text

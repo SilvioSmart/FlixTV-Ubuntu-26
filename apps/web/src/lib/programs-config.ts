@@ -147,6 +147,10 @@ export function generateEpisodeCode(programCode: string, stagione: string, episo
   return `${normalizedProgramCode[0]}${normalizedProgramCode[4]}${twoDigit(getSeasonNumber(stagione))}${twoDigit(episodeNumber)}`;
 }
 
+export function generateProductionCode(stagione: string, episodeNumber: number) {
+  return `S${twoDigit(getSeasonNumber(stagione))}E${twoDigit(episodeNumber)}`;
+}
+
 export function normalizeProgram(value: unknown): ProgramDetail | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -213,7 +217,7 @@ export function createEpisodeDraft(season: ProgramDetail): ProgramEpisode {
     seasonId,
     seriesId: season.seasonCode || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
     episodeNumber: 1,
-    productionCode: "",
+    productionCode: generateProductionCode(season.stagione, 1),
     title: "",
     shortPlot: "",
     longPlot: "",

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { corsJson, corsOptions } from "@/lib/cors";
 import {
   generateEpisodeCode,
+  generateProductionCode,
   generateProgramCode,
   normalizeEpisode,
   type ProgramEpisode
@@ -110,7 +111,7 @@ function serializeEpisode(episode: StoredEpisode): ProgramEpisode {
   };
 }
 
-async function resolveEpisodeCode(episode: ProgramEpisode) {
+async function resolveGeneratedCodes(episode: ProgramEpisode) {
   const season = await prisma.programDetail.findUnique({
     where: {
       id: episode.seasonId
@@ -123,7 +124,12 @@ async function resolveEpisodeCode(episode: ProgramEpisode) {
   });
 
   const programCode = season?.programCode || generateProgramCode(season?.programma ?? episode.seriesId);
-  return generateEpisodeCode(programCode, season?.stagione ?? "Stagione 1", episode.episodeNumber);
+  const seasonLabel = season?.stagione ?? "Stagione 1";
+
+  return {
+    episodeCode: generateEpisodeCode(programCode, seasonLabel, episode.episodeNumber),
+    productionCode: generateProductionCode(seasonLabel, episode.episodeNumber)
+  };
 }
 
 function episodeDelegate() {
@@ -174,21 +180,30 @@ export async function GET(request: NextRequest) {
           episode.season?.stagione ?? "Stagione 1",
           episode.episodeNumber
         );
+        const productionCode = generateProductionCode(
+          episode.season?.stagione ?? "Stagione 1",
+          episode.episodeNumber
+        );
 
-        if (episode.episodeCode !== episodeCode) {
+        if (
+          episode.episodeCode !== episodeCode ||
+          episode.productionCode !== productionCode
+        ) {
           await episodeDelegate().update({
             where: {
               id: episode.id
             },
             data: {
-              episodeCode
+              episodeCode,
+              productionCode
             }
           });
         }
 
         return {
           ...episode,
-          episodeCode
+          episodeCode,
+          productionCode
         };
       })
     );
@@ -214,14 +229,14 @@ export async function POST(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
-  const episodeCode = await resolveEpisodeCode(episode);
+  const { episodeCode, productionCode } = await resolveGeneratedCodes(episode);
   const createdEpisode = await episodeDelegate().create({
     data: {
       episodeCode,
       seasonId: episode.seasonId,
       seriesId: episode.seriesId,
       episodeNumber: episode.episodeNumber,
-      productionCode: episode.productionCode || null,
+      productionCode,
       title: episode.title,
       shortPlot: episode.shortPlot || null,
       longPlot: episode.longPlot || null,
@@ -262,7 +277,7 @@ export async function PUT(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
-  const episodeCode = await resolveEpisodeCode(episode);
+  const { episodeCode, productionCode } = await resolveGeneratedCodes(episode);
   const updatedEpisode = await episodeDelegate().update({
     where: {
       id
@@ -272,7 +287,7 @@ export async function PUT(request: NextRequest) {
       seasonId: episode.seasonId,
       seriesId: episode.seriesId,
       episodeNumber: episode.episodeNumber,
-      productionCode: episode.productionCode || null,
+      productionCode,
       title: episode.title,
       shortPlot: episode.shortPlot || null,
       longPlot: episode.longPlot || null,
