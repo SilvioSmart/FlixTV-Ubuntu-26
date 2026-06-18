@@ -11,9 +11,9 @@ export type ProgramDetail = {
 
 export type ProgramEpisode = {
   id?: string;
-  episodeCode: string;
-  seasonId: string;
-  seriesId: string;
+  IDepisode: string;
+  IDprogramma: string;
+  IDstagione: string;
   episodeNumber: number;
   productionCode: string;
   title: string;
@@ -205,17 +205,15 @@ export function uniqueValues(programs: ProgramDetail[], key: keyof ProgramDetail
 }
 
 export function createEpisodeDraft(season: ProgramDetail): ProgramEpisode {
-  const seasonId = season.id ?? `${season.categoria}-${season.programma}-${season.stagione}`;
-
   return {
     id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    episodeCode: generateEpisodeCode(
+    IDepisode: generateEpisodeCode(
       season.IDprogramma || generateProgramCode(season.programma),
       season.stagione,
       1
     ),
-    seasonId,
-    seriesId: season.IDstagione || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
+    IDprogramma: season.IDprogramma || generateProgramCode(season.programma),
+    IDstagione: season.IDstagione || generateSeasonCode(generateProgramCode(season.programma), season.stagione),
     episodeNumber: 1,
     productionCode: generateProductionCode(season.stagione, 1),
     title: "",
@@ -244,8 +242,8 @@ export function normalizeEpisode(value: unknown): ProgramEpisode | null {
   }
 
   const episode = value as Partial<ProgramEpisode>;
-  const seasonId = isString(episode.seasonId) ? episode.seasonId.trim() : "";
-  const seriesId = isString(episode.seriesId) ? episode.seriesId.trim() : "";
+  const IDprogramma = isString(episode.IDprogramma) ? episode.IDprogramma.trim() : "";
+  const IDstagione = isString(episode.IDstagione) ? episode.IDstagione.trim() : "";
   const title = isString(episode.title) ? episode.title.trim().slice(0, 150) : "";
   const shortPlot = isString(episode.shortPlot) ? episode.shortPlot.trim().slice(0, 250) : "";
   const maxResolution = MAX_RESOLUTIONS.includes(episode.maxResolution as typeof MAX_RESOLUTIONS[number])
@@ -260,7 +258,7 @@ export function normalizeEpisode(value: unknown): ProgramEpisode | null {
     ? episode.accessLevel as ProgramEpisode["accessLevel"]
     : "Free";
 
-  if (!seasonId || !seriesId || !title) {
+  if (!IDprogramma || !IDstagione || !title) {
     return null;
   }
 
@@ -269,9 +267,9 @@ export function normalizeEpisode(value: unknown): ProgramEpisode | null {
       isString(episode.id) && !episode.id.startsWith("temp-")
         ? episode.id
         : undefined,
-    episodeCode: isString(episode.episodeCode) ? episode.episodeCode.trim() : "",
-    seasonId,
-    seriesId,
+    IDepisode: isString(episode.IDepisode) ? episode.IDepisode.trim() : "",
+    IDprogramma,
+    IDstagione,
     episodeNumber: isNumber(episode.episodeNumber)
       ? Math.max(1, Math.round(episode.episodeNumber))
       : 1,

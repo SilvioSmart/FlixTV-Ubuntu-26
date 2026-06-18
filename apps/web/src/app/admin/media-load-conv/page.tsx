@@ -278,7 +278,7 @@ export default function MediaLoadConversionPage() {
             .map((season) => ({
               season,
               episodes: episodes
-                .filter((episode) => episode.seasonId === season.id)
+                .filter((episode) => episode.IDstagione === season.IDstagione)
                 .toSorted((firstEpisode, secondEpisode) =>
                   firstEpisode.episodeNumber - secondEpisode.episodeNumber
                 )
@@ -300,7 +300,7 @@ export default function MediaLoadConversionPage() {
       generateProgramCode(selectedVideoSeason?.programma ?? "");
     const seasonCode = selectedVideoSeason?.IDstagione ||
       generateSeasonCode(programCode, selectedVideoSeason?.stagione ?? "Stagione 1");
-    const episodeCode = generateEpisodeCode(
+    const IDepisode = generateEpisodeCode(
       programCode,
       selectedVideoSeason?.stagione ?? "Stagione 1",
       episodeDraft?.episodeNumber ?? 1
@@ -309,7 +309,7 @@ export default function MediaLoadConversionPage() {
     return {
       programCode,
       seasonCode,
-      episodeCode,
+      IDepisode,
       productionCode: generateProductionCode(
         selectedVideoSeason?.stagione ?? "Stagione 1",
         episodeDraft?.episodeNumber ?? 1
@@ -697,7 +697,8 @@ export default function MediaLoadConversionPage() {
   }
 
   function selectEpisode(episode: ProgramEpisode) {
-    setSelectedVideoSeasonId(episode.seasonId);
+    const season = programs.find((program) => program.IDstagione === episode.IDstagione);
+    setSelectedVideoSeasonId(season?.id ?? null);
     setSelectedEpisodeId(episode.id ?? null);
     setEpisodeDraft(episode);
     setActiveEpisodeTab("info");
@@ -717,9 +718,11 @@ export default function MediaLoadConversionPage() {
     }
 
     const nextEpisode = createEpisodeDraft(selectedVideoSeason);
-    const seasonEpisodes = episodes.filter((episode) => episode.seasonId === selectedVideoSeason.id);
+    const seasonEpisodes = episodes.filter(
+      (episode) => episode.IDstagione === selectedVideoSeason.IDstagione
+    );
     nextEpisode.episodeNumber = seasonEpisodes.length + 1;
-    nextEpisode.episodeCode = generateEpisodeCode(
+    nextEpisode.IDepisode = generateEpisodeCode(
       selectedVideoSeason.IDprogramma || generateProgramCode(selectedVideoSeason.programma),
       selectedVideoSeason.stagione,
       nextEpisode.episodeNumber
@@ -746,7 +749,7 @@ export default function MediaLoadConversionPage() {
       return;
     }
 
-    if (!episodeDraft.seasonId || episodeDraft.seasonId.startsWith("default-")) {
+    if (!episodeDraft.IDprogramma || !episodeDraft.IDstagione) {
       setStatus("error");
       setMessage("Salva prima la stagione nel database, poi crea il video.");
       return;
@@ -1439,7 +1442,7 @@ export default function MediaLoadConversionPage() {
                         Record DB: {episodeDraft.id?.startsWith("temp-") ? "Autogenerato al salvataggio" : episodeDraft.id}
                       </p>
                       <p className="mt-1 text-sm text-white/45">
-                        Record stagione: {episodeDraft.seasonId} | IDstagione: {episodeDraft.seriesId}
+                        IDprogramma: {episodeDraft.IDprogramma} | IDstagione: {episodeDraft.IDstagione}
                       </p>
                     </div>
                   </div>
@@ -1492,7 +1495,7 @@ export default function MediaLoadConversionPage() {
                           ID Episodio
                         </span>
                         <input
-                          value={generatedVideoCodes.episodeCode}
+                          value={generatedVideoCodes.IDepisode}
                           readOnly
                           className="mt-1 h-10 w-full rounded-md border border-white/10 bg-black/35 px-3 text-sm font-black text-white/75 outline-none"
                         />

@@ -16,9 +16,9 @@ const ADMIN_COOKIE_NAME = "flixtv_admin_auth";
 
 type StoredEpisode = {
   id: string;
-  episodeCode: string | null;
-  seasonId: string;
-  seriesId: string;
+  IDepisode: string | null;
+  IDprogramma: string;
+  IDstagione: string;
   episodeNumber: number;
   productionCode: string | null;
   title: string;
@@ -86,9 +86,9 @@ function nullableDate(value: string) {
 function serializeEpisode(episode: StoredEpisode): ProgramEpisode {
   return {
     id: episode.id,
-    episodeCode: episode.episodeCode ?? "",
-    seasonId: episode.seasonId,
-    seriesId: episode.seriesId,
+    IDepisode: episode.IDepisode ?? "",
+    IDprogramma: episode.IDprogramma,
+    IDstagione: episode.IDstagione,
     episodeNumber: episode.episodeNumber,
     productionCode: episode.productionCode ?? "",
     title: episode.title,
@@ -114,7 +114,7 @@ function serializeEpisode(episode: StoredEpisode): ProgramEpisode {
 async function resolveGeneratedCodes(episode: ProgramEpisode) {
   const season = await prisma.programDetail.findUnique({
     where: {
-      id: episode.seasonId
+      IDstagione: episode.IDstagione
     },
     select: {
       programma: true,
@@ -123,11 +123,11 @@ async function resolveGeneratedCodes(episode: ProgramEpisode) {
     }
   });
 
-  const programCode = season?.IDprogramma || generateProgramCode(season?.programma ?? episode.seriesId);
+  const programCode = season?.IDprogramma || episode.IDprogramma;
   const seasonLabel = season?.stagione ?? "Stagione 1";
 
   return {
-    episodeCode: generateEpisodeCode(programCode, seasonLabel, episode.episodeNumber),
+    IDepisode: generateEpisodeCode(programCode, seasonLabel, episode.episodeNumber),
     productionCode: generateProductionCode(seasonLabel, episode.episodeNumber)
   };
 }
@@ -149,8 +149,8 @@ export function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const seasonId = request.nextUrl.searchParams.get("seasonId");
-    const where = seasonId ? { seasonId } : undefined;
+    const IDstagione = request.nextUrl.searchParams.get("IDstagione");
+    const where = IDstagione ? { IDstagione } : undefined;
     const episodes = await episodeDelegate().findMany({
       where,
       include: {
@@ -173,9 +173,8 @@ export async function GET(request: NextRequest) {
     }) as StoredEpisode[];
     const normalizedEpisodes = await Promise.all(
       episodes.map(async (episode) => {
-        const programCode = episode.season?.IDprogramma ||
-          generateProgramCode(episode.season?.programma ?? episode.seriesId);
-        const episodeCode = generateEpisodeCode(
+        const programCode = episode.season?.IDprogramma || episode.IDprogramma;
+        const IDepisode = generateEpisodeCode(
           programCode,
           episode.season?.stagione ?? "Stagione 1",
           episode.episodeNumber
@@ -186,7 +185,7 @@ export async function GET(request: NextRequest) {
         );
 
         if (
-          episode.episodeCode !== episodeCode ||
+          episode.IDepisode !== IDepisode ||
           episode.productionCode !== productionCode
         ) {
           await episodeDelegate().update({
@@ -194,7 +193,7 @@ export async function GET(request: NextRequest) {
               id: episode.id
             },
             data: {
-              episodeCode,
+              IDepisode,
               productionCode
             }
           });
@@ -202,7 +201,7 @@ export async function GET(request: NextRequest) {
 
         return {
           ...episode,
-          episodeCode,
+          IDepisode,
           productionCode
         };
       })
@@ -229,12 +228,12 @@ export async function POST(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
-  const { episodeCode, productionCode } = await resolveGeneratedCodes(episode);
+  const { IDepisode, productionCode } = await resolveGeneratedCodes(episode);
   const createdEpisode = await episodeDelegate().create({
     data: {
-      episodeCode,
-      seasonId: episode.seasonId,
-      seriesId: episode.seriesId,
+      IDepisode,
+      IDprogramma: episode.IDprogramma,
+      IDstagione: episode.IDstagione,
       episodeNumber: episode.episodeNumber,
       productionCode,
       title: episode.title,
@@ -277,15 +276,15 @@ export async function PUT(request: NextRequest) {
     return corsJson(request, { error: "Episode payload is invalid" }, { status: 400 });
   }
 
-  const { episodeCode, productionCode } = await resolveGeneratedCodes(episode);
+  const { IDepisode, productionCode } = await resolveGeneratedCodes(episode);
   const updatedEpisode = await episodeDelegate().update({
     where: {
       id
     },
     data: {
-      episodeCode,
-      seasonId: episode.seasonId,
-      seriesId: episode.seriesId,
+      IDepisode,
+      IDprogramma: episode.IDprogramma,
+      IDstagione: episode.IDstagione,
       episodeNumber: episode.episodeNumber,
       productionCode,
       title: episode.title,

@@ -157,7 +157,7 @@ model ProgramDetail {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   IDprogramma   String   @default("") @db.VarChar(5)
-  IDstagione    String   @default("") @db.VarChar(6)
+  IDstagione    String   @unique @default("") @db.VarChar(6)
   episodes      ProgramEpisode[]
 
   @@index([categoria])
@@ -170,9 +170,9 @@ model ProgramDetail {
 
 model ProgramEpisode {
   id                String        @id @default(cuid())
-  episodeCode       String        @default("") @db.VarChar(6)
-  seasonId          String
-  seriesId          String
+  IDepisode         String        @default("") @db.VarChar(6)
+  IDprogramma       String        @db.VarChar(6)
+  IDstagione        String        @db.VarChar(6)
   episodeNumber     Int
   productionCode    String?       @db.VarChar(6)
   title             String        @db.VarChar(150)
@@ -192,13 +192,13 @@ model ProgramEpisode {
   licensingEnd      DateTime?
   geoRestrictions   Json          @default("[]")
   accessLevel       String        @default("Free")
-  season            ProgramDetail @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  season            ProgramDetail @relation(fields: [IDstagione], references: [IDstagione], onDelete: Cascade)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  @@index([seasonId, episodeNumber])
-  @@index([seriesId])
-  @@index([episodeCode])
+  @@index([IDstagione, episodeNumber])
+  @@index([IDprogramma])
+  @@index([IDepisode])
   @@index([publicationStatus])
   @@map("program_episodes")
 }
