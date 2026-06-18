@@ -9,7 +9,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ADMIN_COOKIE_NAME = "flixtv_admin_auth";
-const activeConversions = new Set<string>();
+const activeConversions = new Map<string, ReturnType<typeof spawn>>();
+const startingConversions = new Set<string>();
+const cancelledConversions = new Set<string>();
 
 function getAdminToken() {
   return process.env.ADMIN_SESSION_TOKEN ?? "flixtv-admin-session";
@@ -26,6 +28,7 @@ function parseProgressTime(value: string) {
 
 async function startConversion(id: string) {
   if (activeConversions.has(id)) {
+    startingConversions.delete(id);
     return;
   }
 
@@ -36,12 +39,14 @@ async function startConversion(id: string) {
   });
 
   if (!asset || asset.mediaType !== "video") {
+    startingConversions.delete(id);
     return;
   }
 
   try {
     await stat(asset.filePath);
   } catch {
+    startingConversions.delete(id);
     await prisma.mediaAsset.update({
       where: {
         id
@@ -66,7 +71,6 @@ async function startConversion(id: string) {
   const outputDir = path.join(outputRoot, id);
   const playlistPath = path.join(outputDir, "index.m3u8");
 
-  activeConversions.add(id);
   await rm(outputDir, {
     recursive: true,
     force: true
@@ -86,6 +90,21 @@ async function startConversion(id: string) {
       conversionError: null
     }
   });
+
+  if (cancelledConversions.has(id)) {
+    startingConversions.delete(id);
+    cancelledConversions.delete(id);
+    await prisma.mediaAsset.update({
+      where: {
+        id
+      },
+      data: {
+        conversionStatus: "cancelled",
+        conversionError: null
+      }
+    });
+    return;
+  }
 
   const ffmpeg = spawn(
     process.env.FFMPEG_PATH || "ffmpeg",
@@ -122,6 +141,8 @@ async function startConversion(id: string) {
       windowsHide: true
     }
   );
+  startingConversions.delete(id);
+  activeConversions.set(id, ffmpeg);
 
   let errorOutput = "";
   let lastProgress = -1;
@@ -171,6 +192,11 @@ async function startConversion(id: string) {
 
   ffmpeg.on("error", (error) => {
     activeConversions.delete(id);
+
+    if (cancelledConversions.has(id)) {
+      return;
+    }
+
     void prisma.mediaAsset.update({
       where: {
         id
@@ -184,6 +210,12 @@ async function startConversion(id: string) {
 
   ffmpeg.on("close", (code) => {
     activeConversions.delete(id);
+    const wasCancelled = cancelledConversions.delete(id);
+
+    if (wasCancelled) {
+      return;
+    }
+
     const succeeded = code === 0;
     void prisma.mediaAsset.update({
       where: {
@@ -226,17 +258,91 @@ export async function POST(
     return corsJson(request, { error: "Video asset not found" }, { status: 404 });
   }
 
-  if (activeConversions.has(id) || asset.conversionStatus === "converting") {
+  if (
+    activeConversions.has(id) ||
+    startingConversions.has(id) ||
+    asset.conversionStatus === "converting"
+  ) {
     return corsJson(request, {
       ok: true,
       status: "converting"
     });
   }
 
-  void startConversion(id);
+  cancelledConversions.delete(id);
+  startingConversions.add(id);
+  void startConversion(id).catch((error) => {
+    startingConversions.delete(id);
+    activeConversions.delete(id);
+    void prisma.mediaAsset.update({
+      where: {
+        id
+      },
+      data: {
+        conversionStatus: "error",
+        conversionError: error instanceof Error ? error.message : "Conversion failed"
+      }
+    });
+  });
 
   return corsJson(request, {
     ok: true,
     status: "queued"
+  });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: {
+    params: Promise<{
+      id: string;
+    }>;
+  }
+) {
+  if (!isAdminRequest(request)) {
+    return corsJson(request, { error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const asset = await prisma.mediaAsset.findUnique({
+    where: {
+      id
+    }
+  });
+
+  if (!asset || asset.mediaType !== "video") {
+    return corsJson(request, { error: "Video asset not found" }, { status: 404 });
+  }
+
+  const ffmpeg = activeConversions.get(id);
+  const isStarting = startingConversions.has(id);
+
+  if (!ffmpeg && !isStarting && !["queued", "converting"].includes(asset.conversionStatus)) {
+    return corsJson(request, {
+      ok: true,
+      status: asset.conversionStatus
+    });
+  }
+
+  cancelledConversions.add(id);
+
+  if (ffmpeg) {
+    ffmpeg.kill("SIGTERM");
+  }
+
+  await prisma.mediaAsset.update({
+    where: {
+      id
+    },
+    data: {
+      conversionStatus: "cancelled",
+      conversionError: null,
+      hlsExists: false
+    }
+  });
+
+  return corsJson(request, {
+    ok: true,
+    status: "cancelled"
   });
 }

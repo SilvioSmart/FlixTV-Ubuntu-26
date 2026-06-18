@@ -736,6 +736,42 @@ export default function MediaLoadConversionPage() {
     }
   }
 
+  async function stopMediaConversion(asset: MediaAsset) {
+    try {
+      const response = await fetch(
+        buildBackendUrl(`/api/media-files/${encodeURIComponent(asset.id)}/convert`),
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+      const data = (await response.json()) as MediaAssetsResponse;
+
+      if (!response.ok) {
+        throw new Error(data.error || "Interruzione conversione non riuscita.");
+      }
+
+      setMediaAssets((currentAssets) =>
+        currentAssets.map((currentAsset) =>
+          currentAsset.id === asset.id
+            ? {
+                ...currentAsset,
+                conversionStatus: "cancelled",
+                conversionError: null,
+                hlsExists: false
+              }
+            : currentAsset
+        )
+      );
+      setStatus("idle");
+      setMessage(`Conversione di ${asset.originalName} interrotta.`);
+      window.setTimeout(() => void loadMediaAssets(selectedMediaFolder), 400);
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Interruzione conversione non riuscita.");
+    }
+  }
+
   function updateStorage(patch: Partial<MediaConfig["storage"]>) {
     setConfig((currentConfig) => ({
       ...currentConfig,
@@ -2289,6 +2325,8 @@ export default function MediaLoadConversionPage() {
                       ? "Completata"
                       : asset.conversionStatus === "error"
                         ? "Errore"
+                        : asset.conversionStatus === "cancelled"
+                          ? "Interrotta"
                         : asset.conversionStatus === "queued"
                           ? "In coda"
                           : asset.conversionStatus === "converting"
@@ -2380,15 +2418,26 @@ export default function MediaLoadConversionPage() {
                             Elimina
                           </button>
                           {asset.mediaType === "video" ? (
-                            <button
-                              type="button"
-                              onClick={() => void convertMediaAsset(asset)}
-                              disabled={!asset.sourceExists || isConverting}
-                              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
-                            >
-                              {isConverting ? <Loader2 size={13} className="animate-spin" /> : <FileVideo size={13} />}
-                              Converti
-                            </button>
+                            isConverting ? (
+                              <button
+                                type="button"
+                                onClick={() => void stopMediaConversion(asset)}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-300 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-amber-200"
+                              >
+                                <CircleX size={13} />
+                                Interrompi
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void convertMediaAsset(asset)}
+                                disabled={!asset.sourceExists}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                              >
+                                <FileVideo size={13} />
+                                Converti
+                              </button>
+                            )
                           ) : null}
                         </div>
                         <div className="min-w-0">
@@ -2399,6 +2448,8 @@ export default function MediaLoadConversionPage() {
                                   ? "text-red-300"
                                   : asset.conversionStatus === "completed"
                                     ? "text-emerald-300"
+                                    : asset.conversionStatus === "cancelled"
+                                      ? "text-amber-300"
                                     : "text-white/55"
                               }
                             >
@@ -2413,6 +2464,8 @@ export default function MediaLoadConversionPage() {
                                   ? "bg-red-500"
                                   : asset.conversionStatus === "completed"
                                     ? "bg-emerald-500"
+                                    : asset.conversionStatus === "cancelled"
+                                      ? "bg-amber-400"
                                     : "bg-stream-red"
                               }`}
                               style={{ width: `${asset.conversionProgress}%` }}
